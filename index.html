@@ -1002,8 +1002,6 @@ function renderDashboard() {
       `}
     </div>
 
-    ${renderProgressionChart(lb)}
-
     ${done > 0 ? (() => {
       const completedRaces = RACES.filter(r => S.results[r.id]).slice(-8);
       return `
@@ -1036,6 +1034,8 @@ function renderDashboard() {
     })() : ''}
 
     ${lb.length > 0 ? renderAnimations(lb) : ''}
+
+    ${renderProgressionChart(lb)}
   `;
 }
 
