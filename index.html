@@ -50,7 +50,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', syste
 /* ── CARDS ── */
 .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--rl); padding: 20px; }
 .card + .card { margin-top: 16px; }
-.card-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 14px; }
+.card-title { font-size: 14px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 14px; }
 
 /* ── STATS ── */
 .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
@@ -275,7 +275,6 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
       <button class="nav-tab active" data-tab="dashboard"    onclick="switchTab('dashboard')">   <span class="ni">🏆</span><span>Dashboard</span>   </button>
       <button class="nav-tab"        data-tab="predictions"  onclick="switchTab('predictions')"> <span class="ni">🔮</span><span>Predictions</span>  </button>
       <button class="nav-tab"        data-tab="results"      onclick="switchTab('results')">     <span class="ni">🏁</span><span>Results</span>      </button>
-      <button class="nav-tab"        data-tab="animations"   onclick="switchTab('animations')">  <span class="ni">🎬</span><span>Animations</span>   </button>
       <button class="nav-tab"        data-tab="calendar"     onclick="switchTab('calendar')">    <span class="ni">📅</span><span>Calendar</span>     </button>
       <button class="nav-tab"        data-tab="participants" onclick="switchTab('participants')"><span class="ni">👥</span><span>Participants</span></button>
     </div>
@@ -286,7 +285,6 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
     <section class="tab-content"        id="tab-participants"></section>
     <section class="tab-content"        id="tab-predictions"></section>
     <section class="tab-content"        id="tab-results"></section>
-    <section class="tab-content"        id="tab-animations"></section>
     <section class="tab-content"        id="tab-calendar"></section>
   </main>
 </div>
@@ -398,6 +396,7 @@ const DEFAULTS = {
     sprint:      { p1: 15, p2: 12, p3:  8, topN: 3 },
     bonus:       { fastestLap: 10, driverPlace: 1, dotd: 5 },
   },
+  adminPin: '',
   participants: [],
   // predictions[raceId][participantId] = {
   //   race:        { p1: driverId|null, p2, p3, p4, p5 },
@@ -672,7 +671,6 @@ function switchTab(tab) {
 function renderTab(tab) {
   ({ dashboard: renderDashboard, participants: renderParticipants,
      predictions: () => renderPredictions(), results: () => renderResults(),
-     animations: renderAnimations,
      calendar: renderCalendar })[tab]?.();
 }
 
@@ -792,23 +790,17 @@ function replayAnims(mode) {
   });
 }
 
-function renderAnimations() {
-  const el = document.getElementById('tab-animations');
-  const lb = leaderboard();
+function renderAnimations(lb) {
   const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
 
   if (!_animRaceId || !completedRaceIds.includes(_animRaceId))
     _animRaceId = completedRaceIds[completedRaceIds.length - 1] ?? null;
 
-  el.innerHTML = `
-    <div class="sec-hdr">
-      <h2 class="sec-title">Animations</h2>
-    </div>
-
+  return `
     <div class="card">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
         <div class="card-title" style="margin:0;flex:1">Race Points</div>
-        <select class="fs" style="max-width:280px" onchange="_animRaceId=+this.value;renderAnimations()">
+        <select class="fs" style="max-width:280px" onchange="_animRaceId=+this.value;renderDashboard()">
           ${completedRaceIds.length === 0
             ? `<option>No results yet</option>`
             : completedRaceIds.map(id => {
@@ -1042,6 +1034,8 @@ function renderDashboard() {
         </div>
       `;
     })() : ''}
+
+    ${lb.length > 0 ? renderAnimations(lb) : ''}
   `;
 }
 
@@ -1220,7 +1214,7 @@ function renderParticipantCards(raceId) {
 function renderPredTable(raceId) {
   const race = raceById(raceId);
   const res  = S.results[raceId];
-  const lb   = leaderboard(); // sorted participants
+  const lb   = leaderboard().sort((a, b) => a.name.localeCompare(b.name));
 
   const sessions = race.sprint ? [
     { key: 'sprintquali', label: 'Sprint Quali Predictions',  positions: PODIUM_POS, icon: '🕐' },
@@ -1396,6 +1390,17 @@ function renderPredTable(raceId) {
     ` : ''}
   `;
 
+  const totalRow = res ? `
+    <tr style="background:rgba(225,6,0,.08);border-bottom:2px solid var(--border)">
+      <td style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Total Points</td>
+      <td></td>
+      ${lb.map(p => {
+        const pts = calcRacePts(p.id, raceId);
+        return `<td class="pc pc-pts" style="text-align:center;font-size:15px;font-weight:800;color:${pts > 0 ? 'var(--green)' : pts < 0 ? '#ff7070' : 'var(--muted)'}">${pts}</td>`;
+      }).join('')}
+    </tr>
+  ` : '';
+
   return `
     <div class="card" style="margin-bottom:14px">
       <div class="tw">
@@ -1406,6 +1411,7 @@ function renderPredTable(raceId) {
             ${lb.map(p => `<th style="text-align:center;min-width:80px">${esc(p.name)}</th>`).join('')}
           </tr></thead>
           <tbody>
+            ${totalRow}
             ${sessionRows}
             ${bonusRows}
           </tbody>
@@ -2122,11 +2128,58 @@ function deleteResults(raceId) {
 // LOCK / UNLOCK PREDICTIONS
 // ═══════════════════════════════════════════════════════════════════
 
+function requirePin(callback) {
+  openModal(`
+    <div class="modal-hdr">
+      <div class="modal-title">🔐 Admin PIN Required</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label class="fl">Enter PIN to continue</label>
+        <input class="fi" id="pin-entry" type="password" maxlength="20"
+               placeholder="PIN" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter')document.getElementById('pin-submit').click()">
+      </div>
+      <div id="pin-err" style="color:var(--red);font-size:12px;min-height:18px;margin-top:4px"></div>
+    </div>
+    <div class="modal-foot">
+      <div></div>
+      <div class="modal-foot-right">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button id="pin-submit" class="btn btn-primary" onclick="_checkPin()">Confirm</button>
+      </div>
+    </div>
+  `);
+  setTimeout(() => document.getElementById('pin-entry')?.focus(), 50);
+  window._pinCallback = callback;
+}
+
+function _checkPin() {
+  const entered = document.getElementById('pin-entry')?.value || '';
+  if (entered === S.adminPin) {
+    closeModal();
+    window._pinCallback?.();
+    window._pinCallback = null;
+  } else {
+    document.getElementById('pin-err').textContent = 'Incorrect PIN. Try again.';
+    document.getElementById('pin-entry').value = '';
+    document.getElementById('pin-entry').focus();
+  }
+}
+
 function toggleLock(raceId) {
-  S.locked[raceId] = !S.locked[raceId];
-  save();
-  toast(S.locked[raceId] ? '🔒 Predictions locked' : '🔓 Predictions unlocked');
-  renderPredictions(raceId);
+  const doLock = () => {
+    S.locked[raceId] = !S.locked[raceId];
+    save();
+    toast(S.locked[raceId] ? '🔒 Predictions locked' : '🔓 Predictions unlocked');
+    renderPredictions(raceId);
+  };
+  if (S.adminPin) {
+    requirePin(doLock);
+  } else {
+    doLock();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2245,6 +2298,20 @@ function openSettings() {
 
       <div class="sep"></div>
 
+      <div style="margin-bottom:12px">
+        <div class="card-title">Admin PIN</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
+          If set, this PIN is required to lock or unlock predictions. Leave blank to allow anyone to lock/unlock.
+        </p>
+        <div class="fg">
+          <label class="fl">PIN (leave blank to disable)</label>
+          <input class="fi" id="s-admin-pin" type="password" value="${esc(S.adminPin || '')}"
+                 maxlength="20" placeholder="No PIN set" autocomplete="new-password">
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
       <div>
         <div class="card-title" style="margin-bottom:10px">Data Management</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
@@ -2296,6 +2363,10 @@ function saveSettings() {
     const el = document.getElementById(`sc-bonus-${k}`);
     if (el) S.scoring.bonus[k] = Math.max(0, +el.value || 0);
   });
+
+  // Admin PIN
+  const pinEl = document.getElementById('s-admin-pin');
+  if (pinEl) S.adminPin = pinEl.value.trim();
 
   save();
   document.getElementById('hdr-name').textContent = S.leagueName;
