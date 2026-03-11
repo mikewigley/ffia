@@ -28,7 +28,7 @@
 body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; line-height: 1.5; }
 
 /* ── HEADER ── */
-.header { background: #000; border-bottom: 3px solid var(--red); position: sticky; top: 0; z-index: 100; }
+.header { background: #000; border-bottom: 3px solid var(--red); position: sticky; top: 0; z-index: 100; padding-top: env(safe-area-inset-top, 0px); }
 .header-inner { max-width: 1280px; margin: 0 auto; padding: 0 20px; height: 62px; display: flex; align-items: center; justify-content: space-between; }
 .header-brand { display: flex; align-items: center; gap: 14px; }
 .logo { background: var(--red); color: #fff; font-weight: 900; font-size: 15px; font-style: italic; padding: 4px 10px; border-radius: 4px; letter-spacing: -.5px; }
@@ -38,9 +38,10 @@ body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', syste
 /* ── NAV ── */
 .nav { background: #0d0d0d; border-bottom: 1px solid var(--border); position: sticky; top: 62px; z-index: 99; }
 .nav-inner { max-width: 1280px; margin: 0 auto; padding: 0 20px; display: flex; gap: 2px; }
-.nav-tab { background: none; border: none; color: var(--muted); cursor: pointer; padding: 13px 18px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 7px; border-bottom: 2px solid transparent; transition: all .15s; white-space: nowrap; font-family: inherit; }
+.nav-tab { background: none; border: none; color: var(--muted); cursor: pointer; padding: 13px 18px; font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid transparent; transition: all .15s; white-space: nowrap; font-family: inherit; }
 .nav-tab:hover { color: var(--text); background: rgba(255,255,255,.04); }
 .nav-tab.active { color: var(--red); border-bottom-color: var(--red); }
+.nav-tab .ni { font-size: 22px; }
 
 /* ── LAYOUT ── */
 .main { max-width: 1280px; margin: 0 auto; padding: 24px 20px; }
@@ -234,6 +235,8 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 
 /* ── TOAST ── */
 .toast-wrap { position: fixed; bottom: 22px; right: 22px; z-index: 2000; display: flex; flex-direction: column; gap: 7px; pointer-events: none; }
+@keyframes clippyIn { from { opacity:0; transform: translateY(30px) scale(.85); } to { opacity:1; transform: translateY(0) scale(1); } }
+#clippy-wrap.visible { display: flex !important; animation: clippyIn .5s cubic-bezier(.17,.67,.35,1.3) forwards; }
 .toast { background: #1c1c1c; border: 1px solid var(--border2); border-radius: var(--r); padding: 11px 16px; font-size: 13px; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,.5); animation: tIn .18s ease; display: flex; align-items: center; gap: 8px; }
 .toast.ok  { border-left: 3px solid var(--green); }
 .toast.err { border-left: 3px solid var(--red); }
@@ -290,6 +293,45 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 </div>
 
 <div class="toast-wrap" id="toasts"></div>
+
+<!-- Clippy -->
+<div id="clippy-wrap" style="display:none;position:fixed;bottom:24px;right:24px;z-index:3000;display:none;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none">
+  <div id="clippy-bubble" style="pointer-events:auto;background:#fffde7;color:#222;border:2px solid #d4aa00;border-radius:12px;padding:12px 16px;max-width:200px;font-size:13px;font-weight:500;line-height:1.4;position:relative;box-shadow:0 4px 16px rgba(0,0,0,.4)">
+    <button onclick="closeClipy()" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;font-size:15px;color:#888;line-height:1;padding:0">✕</button>
+    It looks like you're entering predictions!<br><br>
+    <strong>Do you need help? 😄</strong>
+    <div style="position:absolute;bottom:-10px;right:28px;width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:10px solid #d4aa00"></div>
+    <div style="position:absolute;bottom:-8px;right:29px;width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:9px solid #fffde7"></div>
+  </div>
+  <svg id="clippy-svg" style="pointer-events:auto;cursor:pointer;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4))" onclick="closeClipy()" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 185" width="72">
+    <!-- Outer loop -->
+    <path d="M22,158 L22,36 Q22,6 50,6 Q78,6 78,36 L78,128" fill="none" stroke="#c9a800" stroke-width="13" stroke-linecap="round"/>
+    <!-- Inner loop -->
+    <path d="M37,158 L37,50 Q37,28 50,28 Q63,28 63,50 L63,128" fill="none" stroke="#c9a800" stroke-width="13" stroke-linecap="round"/>
+    <!-- Bottom U connector -->
+    <path d="M22,158 Q22,174 29.5,174 Q37,174 37,158" fill="none" stroke="#c9a800" stroke-width="13" stroke-linecap="round"/>
+    <!-- Shine on outer loop -->
+    <path d="M18,100 L18,50 Q18,14 50,14" fill="none" stroke="#f0cc00" stroke-width="4" stroke-linecap="round" opacity=".6"/>
+    <!-- Eye area -->
+    <rect x="28" y="44" width="44" height="36" rx="8" fill="#fffde7" stroke="#c9a800" stroke-width="2"/>
+    <!-- Left eye white -->
+    <ellipse cx="40" cy="62" rx="7" ry="8" fill="white" stroke="#bbb" stroke-width="1"/>
+    <!-- Left pupil -->
+    <circle cx="41.5" cy="63" r="3.5" fill="#1a1a1a"/>
+    <circle cx="43" cy="61" r="1.2" fill="white"/>
+    <!-- Right eye white -->
+    <ellipse cx="60" cy="62" rx="7" ry="8" fill="white" stroke="#bbb" stroke-width="1"/>
+    <!-- Right pupil -->
+    <circle cx="61.5" cy="63" r="3.5" fill="#1a1a1a"/>
+    <circle cx="63" cy="61" r="1.2" fill="white"/>
+    <!-- Left eyebrow (raised, curious) -->
+    <path d="M33,50 Q40,46 47,50" fill="none" stroke="#555" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Right eyebrow -->
+    <path d="M53,48 Q60,44 67,48" fill="none" stroke="#555" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Mouth (slight smile) -->
+    <path d="M42,74 Q50,79 58,74" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+</div>
 <div class="overlay" id="overlay">
   <div class="modal" id="modal" onclick="event.stopPropagation()"></div>
 </div>
@@ -397,6 +439,7 @@ const DEFAULTS = {
     bonus:       { fastestLap: 10, driverPlace: 1, dotd: 5 },
   },
   adminPin: '',
+  deadlineHours: 0,
   participants: [],
   // predictions[raceId][participantId] = {
   //   race:        { p1: driverId|null, p2, p3, p4, p5 },
@@ -536,6 +579,26 @@ function nextRace() {
   return RACES.find(r => !S.results[r.id] && r.date >= today);
 }
 
+function isPastDeadline(raceId) {
+  if (!S.deadlineHours) return false;
+  const race = raceById(raceId);
+  if (!race) return false;
+  const deadline = new Date(race.date + 'T12:00:00').getTime() - S.deadlineHours * 3600000;
+  return Date.now() >= deadline;
+}
+
+function deadlineLabel(raceId) {
+  if (!S.deadlineHours) return null;
+  const race = raceById(raceId);
+  if (!race) return null;
+  const deadline = new Date(race.date + 'T12:00:00').getTime() - S.deadlineHours * 3600000;
+  const diff = deadline - Date.now();
+  if (diff <= 0) return { passed: true, text: 'Deadline passed' };
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return { passed: false, text: h > 0 ? `${h}h ${m}m until deadline` : `${m}m until deadline` };
+}
+
 // Points for one participant in one race
 // Driver finish position prediction: 0 pts for exact, -1pt per position off
 function driverPlacePts(predicted, actual) {
@@ -662,10 +725,28 @@ function toast(msg, type = 'ok') {
   setTimeout(() => el.remove(), 3200);
 }
 
+let _clippyTimer = null;
+let _clippyDismissed = false;
+
 function switchTab(tab) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `tab-${tab}`));
   renderTab(tab);
+  // Clippy: appear after 1 min on predictions tab
+  clearTimeout(_clippyTimer);
+  if (tab === 'predictions' && !_clippyDismissed) {
+    _clippyTimer = setTimeout(() => {
+      document.getElementById('clippy-wrap').classList.add('visible');
+    }, 60000);
+  } else {
+    document.getElementById('clippy-wrap').classList.remove('visible');
+  }
+}
+
+function closeClipy() {
+  _clippyDismissed = true;
+  clearTimeout(_clippyTimer);
+  document.getElementById('clippy-wrap').classList.remove('visible');
 }
 
 function renderTab(tab) {
@@ -933,11 +1014,76 @@ function renderProgressionChart(lb) {
   `;
 }
 
+function renderHeadToHead(lb) {
+  if (lb.length < 2) return '';
+  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  if (completedRaceIds.length === 0) return '';
+
+  const parts = [...lb].sort((a, b) => a.name.localeCompare(b.name));
+  const n = parts.length;
+  const wins = Array.from({length: n}, () => Array(n).fill(0));
+  completedRaceIds.forEach(rid => {
+    const pts = parts.map(p => calcRacePts(p.id, rid));
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++)
+        if (i !== j && pts[i] > pts[j]) wins[i][j]++;
+  });
+
+  const initials = p => p.name.split(' ').map(w => w[0]).join('');
+  return `
+    <div class="card">
+      <div class="card-title">Head to Head</div>
+      <p style="font-size:11px;color:var(--muted);margin:-6px 0 12px">Wins–Losses per race across ${completedRaceIds.length} completed race${completedRaceIds.length===1?'':'s'}</p>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th></th>
+            ${parts.map(p => `<th style="text-align:center;font-size:11px;white-space:nowrap">${esc(p.name)}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${parts.map((pi, i) => `
+              <tr>
+                <td style="font-size:12px;white-space:nowrap"><strong>${esc(pi.name)}</strong></td>
+                ${parts.map((pj, j) => {
+                  if (i === j) return `<td style="background:rgba(255,255,255,.03);text-align:center;color:var(--muted)">·</td>`;
+                  const w = wins[i][j], l = wins[j][i];
+                  const clr = w > l ? 'var(--green)' : w < l ? '#ff7070' : 'var(--muted)';
+                  return `<td style="text-align:center;color:${clr};font-weight:700;font-size:13px">${w}–${l}</td>`;
+                }).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
 function renderDashboard() {
   const el = document.getElementById('tab-dashboard');
   const lb = leaderboard();
   const done = Object.keys(S.results).length;
   const nr = nextRace();
+
+  // Trend arrows: rank now vs rank before last race
+  const completedRaceIds = Object.keys(S.results).map(Number).sort((a,b) => a-b);
+  const prevRanks = {};
+  if (completedRaceIds.length >= 2) {
+    const prevIds = completedRaceIds.slice(0, -1);
+    [...S.participants]
+      .map(p => ({ id: p.id, total: prevIds.reduce((s, id) => s + calcRacePts(p.id, id), 0) }))
+      .sort((a, b) => b.total - a.total)
+      .forEach((p, i) => { prevRanks[p.id] = i + 1; });
+  }
+  const trendHtml = p => {
+    const prev = prevRanks[p.id];
+    if (prev == null) return '';
+    const curr = lb.findIndex(x => x.id === p.id) + 1;
+    const diff = prev - curr;
+    if (diff > 0) return `<span style="color:var(--green);font-size:11px;font-weight:700;margin-left:4px">▲${diff}</span>`;
+    if (diff < 0) return `<span style="color:#ff7070;font-size:11px;font-weight:700;margin-left:4px">▼${Math.abs(diff)}</span>`;
+    return `<span style="color:var(--muted);font-size:11px;margin-left:4px">—</span>`;
+  };
 
   el.innerHTML = `
     <div class="stats-row">
@@ -984,11 +1130,11 @@ function renderDashboard() {
             <tbody>
               ${lb.map((p, i) => {
                 const icon = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-weight:700">#${i+1}</span>`;
-                const lastRaceId = Object.keys(S.results).map(Number).sort((a,b)=>b-a)[0];
+                const lastRaceId = completedRaceIds[completedRaceIds.length - 1];
                 const lastPts = lastRaceId ? calcRacePts(p.id, lastRaceId) : null;
                 return `<tr>
                   <td style="font-size:17px">${icon}</td>
-                  <td><strong>${esc(p.name)}</strong></td>
+                  <td><strong>${esc(p.name)}</strong>${trendHtml(p)}</td>
                   <td style="text-align:center">
                     <span style="color:var(--green);font-weight:700">${p.correct}</span>
                   </td>
@@ -1032,6 +1178,8 @@ function renderDashboard() {
         </div>
       `;
     })() : ''}
+
+    ${lb.length >= 2 ? renderHeadToHead(lb) : ''}
 
     ${lb.length > 0 ? renderAnimations(lb) : ''}
 
@@ -1105,6 +1253,9 @@ function renderPredictions(raceId) {
   const race = raceById(_predRaceId);
   const res  = S.results[_predRaceId];
   const locked = !!S.locked[_predRaceId];
+  const deadlinePassed = isPastDeadline(_predRaceId);
+  const effectiveLocked = locked || deadlinePassed;
+  const dl = deadlineLabel(_predRaceId);
   const hasParticipants = S.participants.length > 0;
 
   const countWithPreds = S.participants.filter(p => {
@@ -1116,13 +1267,13 @@ function renderPredictions(raceId) {
     <div class="sec-hdr">
       <h2 class="sec-title">Predictions</h2>
       <div class="sec-actions">
-        ${locked
-          ? `<span class="badge badge-locked">🔒 Locked</span>
-             <button class="btn btn-ghost btn-sm" onclick="toggleLock(${_predRaceId})">🔓 Unlock</button>`
+        ${effectiveLocked
+          ? `${deadlinePassed && !locked ? '<span class="badge badge-locked">⏰ Deadline Passed</span>' : '<span class="badge badge-locked">🔒 Locked</span>'}
+             <button class="btn btn-ghost btn-sm" onclick="toggleLock(${_predRaceId})">${locked ? '🔓 Unlock' : '🔒 Lock'}</button>`
           : `<button class="btn btn-ghost btn-sm" onclick="toggleLock(${_predRaceId})">🔒 Lock Predictions</button>`}
-        ${hasParticipants && !locked
+        ${hasParticipants && !effectiveLocked
           ? `<button class="btn btn-primary" onclick="openPredictionsModal(${_predRaceId})">✏ Enter Predictions</button>`
-          : hasParticipants && locked
+          : hasParticipants && effectiveLocked
           ? `<button class="btn btn-ghost btn-sm" onclick="openPredictionsModal(${_predRaceId})">👁 View Predictions</button>`
           : ''}
       </div>
@@ -1154,6 +1305,11 @@ function renderPredictions(raceId) {
             <div class="stat-label">Results</div>
             <div style="font-size:14px;font-weight:600">${res ? '<span style="color:var(--green)">In</span>' : '<span style="color:var(--muted)">Pending</span>'}</div>
           </div>
+          ${dl ? `
+          <div style="text-align:center">
+            <div class="stat-label">Deadline</div>
+            <div style="font-size:14px;font-weight:600;color:${dl.passed ? '#ff7070' : 'var(--gold)'}">${dl.text}</div>
+          </div>` : ''}
         </div>
       </div>
     </div>
@@ -1200,7 +1356,10 @@ function renderParticipantCards(raceId) {
     const barClr  = isDone ? 'var(--green)' : pct > 0 ? 'var(--red)' : 'rgba(255,255,255,.2)';
     return `
       <button class="pq-card${isDone ? ' pq-done' : ''}" onclick="openPredictionsModal(${raceId}, '${p.id}')">
-        <div class="pq-name">${esc(p.name)}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div class="pq-name" style="margin:0">${esc(p.name)}</div>
+          <span style="font-size:13px">${isDone ? '✅' : filled > 0 ? '⚠️' : '○'}</span>
+        </div>
         <div class="pq-count">${filled} / ${totalSlots} positions${locked ? ' 👁' : ' ✏'}</div>
         <div class="pq-bar-bg">
           <div class="pq-bar-fill" style="width:${pct}%;background:${barClr}"></div>
@@ -1799,7 +1958,7 @@ function renderPredModal() {
   const race = raceById(_pred.raceId);
   const p    = S.participants[_pred.idx];
   const buf  = _pred.buf[p.id];
-  const locked = !!S.locked[_pred.raceId];
+  const locked = !!S.locked[_pred.raceId] || isPastDeadline(_pred.raceId);
 
   const sessions = race.sprint ? [
     { key: 'sprintquali', label: 'Sprint Quali', positions: PODIUM_POS, icon: '🕐', pts: S.scoring.sprintquali },
@@ -1889,7 +2048,10 @@ function renderPredModal() {
       </div>
       <div class="modal-foot-right">
         <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-        ${!locked ? `<button class="btn btn-primary" onclick="saveAllPreds()">💾 Save All</button>` : ''}
+        ${!locked ? `
+          <button class="btn btn-ghost btn-sm" onclick="copyFromPrevRace()" title="Copy predictions from the previous race">📋 Copy Prev</button>
+          <button class="btn btn-primary" onclick="saveAllPreds()">💾 Save All</button>
+        ` : ''}
       </div>
     </div>
   `);
@@ -1935,8 +2097,26 @@ function collectCurrentForm() {
   _pred.buf[p.id] = buf;
 }
 
-function predNav(dir) {
+function copyFromPrevRace() {
+  const p = S.participants[_pred.idx];
   collectCurrentForm();
+  const prevRace = RACES.slice().reverse().find(r =>
+    r.id < _pred.raceId && S.predictions[r.id]?.[p.id]?.race?.p1
+  );
+  if (!prevRace) { toast('No previous predictions found to copy', 'err'); return; }
+  const prev = S.predictions[prevRace.id][p.id];
+  _pred.buf[p.id] = {
+    race:        Object.assign({}, prev.race        || {}),
+    quali:       Object.assign({}, prev.quali       || {}),
+    sprintquali: Object.assign({}, prev.sprintquali || {}),
+    sprint:      Object.assign({}, prev.sprint      || {}),
+    bonus:       Object.assign({}, prev.bonus       || {}),
+  };
+  renderPredModal();
+  toast(`Copied from Rd ${prevRace.id}: ${prevRace.name}`);
+}
+
+function predNav(dir) {
   const newIdx = _pred.idx + dir;
   if (newIdx < 0 || newIdx >= S.participants.length) return;
   _pred.idx = newIdx;
@@ -2197,6 +2377,11 @@ function openSettings() {
         <label class="fl">League Name</label>
         <input class="fi" id="s-name" type="text" value="${esc(S.leagueName)}" maxlength="50">
       </div>
+      <div class="fg">
+        <label class="fl">Prediction Deadline (hours before race-day noon — 0 to disable)</label>
+        <input class="fi" id="s-deadline" type="number" value="${S.deadlineHours ?? 0}" min="0" max="168"
+               placeholder="0 = no auto-deadline">
+      </div>
 
       <div class="sep"></div>
 
@@ -2367,6 +2552,10 @@ function saveSettings() {
   // Admin PIN
   const pinEl = document.getElementById('s-admin-pin');
   if (pinEl) S.adminPin = pinEl.value.trim();
+
+  // Deadline
+  const dlEl = document.getElementById('s-deadline');
+  if (dlEl) S.deadlineHours = Math.max(0, +dlEl.value || 0);
 
   save();
   document.getElementById('hdr-name').textContent = S.leagueName;
