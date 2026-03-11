@@ -1,0 +1,2345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FFIA Fantasy League 2026</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #0a0a0a;
+  --card:    #111111;
+  --card2:   #161616;
+  --border:  #1e1e1e;
+  --border2: #2a2a2a;
+  --red:     #e10600;
+  --red2:    #ff2218;
+  --text:    #f0f0f0;
+  --muted:   #666;
+  --muted2:  #999;
+  --green:   #00d856;
+  --gold:    #ffd700;
+  --silver:  #c0c0c0;
+  --bronze:  #cd7f32;
+  --r: 8px; --rl: 12px;
+}
+
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; line-height: 1.5; }
+
+/* ── HEADER ── */
+.header { background: #000; border-bottom: 3px solid var(--red); position: sticky; top: 0; z-index: 100; }
+.header-inner { max-width: 1280px; margin: 0 auto; padding: 0 20px; height: 62px; display: flex; align-items: center; justify-content: space-between; }
+.header-brand { display: flex; align-items: center; gap: 14px; }
+.logo { background: var(--red); color: #fff; font-weight: 900; font-size: 15px; font-style: italic; padding: 4px 10px; border-radius: 4px; letter-spacing: -.5px; }
+.header-title { font-size: 19px; font-weight: 700; letter-spacing: -.3px; }
+.header-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+/* ── NAV ── */
+.nav { background: #0d0d0d; border-bottom: 1px solid var(--border); position: sticky; top: 62px; z-index: 99; }
+.nav-inner { max-width: 1280px; margin: 0 auto; padding: 0 20px; display: flex; gap: 2px; }
+.nav-tab { background: none; border: none; color: var(--muted); cursor: pointer; padding: 13px 18px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 7px; border-bottom: 2px solid transparent; transition: all .15s; white-space: nowrap; font-family: inherit; }
+.nav-tab:hover { color: var(--text); background: rgba(255,255,255,.04); }
+.nav-tab.active { color: var(--red); border-bottom-color: var(--red); }
+
+/* ── LAYOUT ── */
+.main { max-width: 1280px; margin: 0 auto; padding: 24px 20px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── CARDS ── */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--rl); padding: 20px; }
+.card + .card { margin-top: 16px; }
+.card-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 14px; }
+
+/* ── STATS ── */
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--rl); padding: 18px 20px; }
+.stat-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 8px; }
+.stat-value { font-size: 28px; font-weight: 800; line-height: 1; }
+.stat-sub { font-size: 12px; color: var(--muted); margin-top: 5px; }
+
+/* ── TABLE ── */
+.tw { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 9px 12px; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: rgba(255,255,255,.02); }
+
+/* ── PREDICTION TABLE CELLS ── */
+.pc { text-align: center !important; padding: 8px 10px !important; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pc-ok      { background: rgba(0,216,86,.15); color: var(--green); }
+.pc-partial { background: rgba(255,165,0,.15); color: #ffaa00; }
+.pc-no      { background: rgba(225,6,0,.08); color: #ff7070; }
+.pc-nil     { color: var(--muted); }
+.pc-res     { background: rgba(255,215,0,.1); color: var(--gold) !important; }
+.pc-pts     { background: rgba(255,255,255,.04); font-weight: 800 !important; }
+
+/* ── CHART ANIMATIONS ── */
+@keyframes drawLine {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes fadeDot { to { opacity: 1; } }
+
+/* ── RACE BAR ANIMATIONS ── */
+@keyframes growBar { to { width: var(--pct); } }
+@keyframes fadeInPts { from { opacity:0; } to { opacity:1; } }
+
+.anim-chart { display:flex; flex-direction:column; gap:12px; padding:4px 0; }
+.anim-row { display:flex; align-items:center; gap:10px; }
+.anim-label { width:110px; min-width:110px; font-size:13px; font-weight:600;
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right;
+              color:var(--text); }
+.anim-track-wrap { flex:1; padding-right:65px; overflow:visible; }
+.anim-track { height:30px; background:rgba(255,255,255,.06); border-radius:6px;
+              position:relative; overflow:visible; }
+.anim-fill  { height:100%; width:0; border-radius:6px; position:relative;
+              background:var(--clr);
+              animation: growBar 1.4s cubic-bezier(.15,.8,.3,1) forwards; }
+.anim-fill::after { content:''; position:absolute; inset:0; border-radius:6px;
+                    background:linear-gradient(to right,rgba(0,0,0,.35),transparent); }
+.anim-car-wrap { position:absolute; right:-62px; top:50%; transform:translateY(-50%);
+                 pointer-events:none; z-index:2; }
+.anim-pts { min-width:60px; font-size:13px; font-weight:700; text-align:left;
+            opacity:0; animation: fadeInPts .3s ease forwards; }
+
+/* ── SESSION HEADER ── */
+.session-hdr {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; background: rgba(225,6,0,.07);
+  border-left: 3px solid var(--red); border-radius: 0 var(--r) var(--r) 0;
+  margin-bottom: 0;
+}
+.session-hdr-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--red); }
+.session-hdr-sub { font-size: 11px; color: var(--muted); }
+
+/* ── BUTTONS ── */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: var(--r); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; font-family: inherit; }
+.btn-primary { background: var(--red); color: #fff; }
+.btn-primary:hover { background: var(--red2); }
+.btn-ghost { background: rgba(255,255,255,.07); color: var(--text); border: 1px solid var(--border2); }
+.btn-ghost:hover { background: rgba(255,255,255,.12); }
+.btn-success { background: rgba(0,216,86,.15); color: var(--green); border: 1px solid rgba(0,216,86,.3); }
+.btn-success:hover { background: rgba(0,216,86,.25); }
+.btn-danger { background: rgba(225,6,0,.12); color: #ff7070; border: 1px solid rgba(225,6,0,.25); }
+.btn-danger:hover { background: rgba(225,6,0,.22); }
+.btn-sm { padding: 5px 11px; font-size: 12px; }
+.btn-xs { padding: 3px 8px; font-size: 11px; }
+
+/* ── BADGES ── */
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .3px; }
+.badge-done     { background: rgba(0,216,86,.13); color: var(--green); }
+.badge-upcoming { background: rgba(120,120,120,.15); color: var(--muted2); }
+.badge-next     { background: rgba(225,6,0,.18); color: var(--red); }
+.badge-locked   { background: rgba(255,215,0,.15); color: var(--gold); }
+
+/* ── PARTICIPANT QUICK-SELECT CARDS ── */
+.pq-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.pq-card {
+  flex: 1 1 140px; max-width: 200px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 10px 12px;
+  cursor: pointer; transition: all .15s; text-align: left;
+  color: var(--text); font-family: inherit;
+}
+.pq-card:hover { background: rgba(255,255,255,.08); border-color: var(--red); }
+.pq-card.pq-done { border-color: rgba(0,216,86,.3); }
+.pq-card.pq-done:hover { border-color: var(--green); }
+.pq-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+.pq-count { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.pq-bar-bg { height: 3px; background: rgba(255,255,255,.1); border-radius: 2px; }
+.pq-bar-fill { height: 3px; border-radius: 2px; transition: width .3s; }
+
+/* ── SECTION HEADER ── */
+.sec-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+.sec-title { font-size: 20px; font-weight: 700; }
+.sec-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── PARTICIPANT CARDS ── */
+.p-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.p-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--rl); padding: 18px; cursor: pointer; transition: border-color .15s; }
+.p-card:hover { border-color: var(--border2); }
+.p-card-hdr { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.p-name { font-size: 15px; font-weight: 700; }
+.p-pts { font-size: 24px; font-weight: 800; color: var(--red); }
+.p-pts-lbl { font-size: 10px; color: var(--muted); text-align: right; }
+
+.add-p-card { background: transparent; border: 2px dashed var(--border2); border-radius: var(--rl); padding: 18px; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; color: var(--muted); font-size: 14px; font-weight: 600; transition: all .15s; min-height: 130px; }
+.add-p-card:hover { border-color: var(--red); color: var(--red); background: rgba(225,6,0,.05); }
+
+/* ── CALENDAR ── */
+.cal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.race-card { background: var(--card); border: 1px solid var(--border); border-left: 3px solid transparent; border-radius: var(--rl); padding: 14px; cursor: pointer; transition: all .15s; }
+.race-card:hover { background: var(--card2); border-color: var(--border2); }
+.race-card.done { border-left-color: var(--green); }
+.race-card.nxt  { border-left-color: var(--red); }
+.race-rnd { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.race-nm  { font-size: 13px; font-weight: 700; line-height: 1.3; margin-bottom: 3px; }
+
+/* ── MODAL ── */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 1000; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 32px 16px; backdrop-filter: blur(3px); }
+.overlay.open { display: flex; }
+.modal { background: #131313; border: 1px solid var(--border2); border-radius: var(--rl); width: 100%; max-width: 680px; margin: auto; box-shadow: 0 24px 60px rgba(0,0,0,.7); }
+.modal.wide { max-width: 860px; }
+.modal-hdr { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.modal-title { font-size: 17px; font-weight: 700; }
+.modal-title-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.modal-close { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 4px; line-height: 1; }
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 20px 22px; max-height: 72vh; overflow-y: auto; }
+.modal-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.modal-foot-right { display: flex; gap: 8px; }
+
+/* ── PRED NAV ── */
+.pred-nav { display: flex; align-items: center; gap: 10px; padding: 12px 22px; background: var(--card2); border-bottom: 1px solid var(--border); }
+.pred-nav-name { font-weight: 700; font-size: 15px; flex: 1; text-align: center; }
+.pred-nav-count { font-size: 11px; color: var(--muted); text-align: center; }
+
+/* ── FORM ── */
+.fg { margin-bottom: 15px; }
+.fl { display: block; font-size: 11px; font-weight: 700; color: var(--muted2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .4px; }
+.fi, .fs { width: 100%; background: var(--card); border: 1px solid var(--border2); border-radius: var(--r); color: var(--text); padding: 9px 12px; font-size: 14px; outline: none; transition: border-color .15s; font-family: inherit; }
+.fi:focus, .fs:focus { border-color: var(--red); }
+.fs { cursor: pointer; }
+
+/* ── PRED FORM GRID ── */
+.pred-form-section { margin-bottom: 22px; }
+.pred-form-section-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.pred-form-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.pred-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.pred-pos-label { font-size: 13px; font-weight: 800; color: var(--red); width: 30px; flex-shrink: 0; }
+.pred-pts-label { font-size: 11px; color: var(--muted); width: 42px; flex-shrink: 0; }
+
+/* ── SCORING TABLE ── */
+.scoring-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; }
+@media (max-width: 600px) { .scoring-grid { grid-template-columns: 1fr 1fr; } }
+.scoring-section { }
+.scoring-section-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 10px; }
+.scoring-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+.scoring-row:last-child { border-bottom: none; }
+.scoring-row label { font-size: 13px; font-weight: 600; color: var(--red); }
+.scoring-input { width: 72px; background: var(--card); border: 1px solid var(--border2); border-radius: var(--r); color: var(--text); padding: 6px 8px; font-size: 14px; font-weight: 700; text-align: center; outline: none; font-family: inherit; }
+.scoring-input:focus { border-color: var(--red); }
+
+/* ── MISC ── */
+.sep { height: 1px; background: var(--border); margin: 16px 0; }
+.pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.09); margin: 2px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.empty { text-align: center; padding: 52px 20px; color: var(--muted); }
+.empty-icon { font-size: 42px; display: block; margin-bottom: 12px; }
+.empty-title { font-size: 17px; font-weight: 600; color: var(--muted2); margin-bottom: 6px; }
+.empty-sub { font-size: 13px; margin-bottom: 16px; }
+
+/* ── TOAST ── */
+.toast-wrap { position: fixed; bottom: 22px; right: 22px; z-index: 2000; display: flex; flex-direction: column; gap: 7px; pointer-events: none; }
+.toast { background: #1c1c1c; border: 1px solid var(--border2); border-radius: var(--r); padding: 11px 16px; font-size: 13px; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,.5); animation: tIn .18s ease; display: flex; align-items: center; gap: 8px; }
+.toast.ok  { border-left: 3px solid var(--green); }
+.toast.err { border-left: 3px solid var(--red); }
+@keyframes tIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .nav-tab span:not(.ni) { display: none; }
+  .nav-tab { padding: 12px 13px; }
+  .stats-row { grid-template-columns: repeat(2,1fr); }
+  .header-title { font-size: 16px; }
+  .scoring-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <span class="logo">FFIA</span>
+        <div>
+          <h1 class="header-title" id="hdr-name">FFIA Fantasy League</h1>
+          <p class="header-sub">2026 Season &mdash; 24 Races &middot; 22 Drivers</p>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="openSettings()">⚙ Settings</button>
+      <span id="sync-status" style="font-size:11px;color:var(--muted);white-space:nowrap"></span>
+    </div>
+  </header>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <button class="nav-tab active" data-tab="dashboard"    onclick="switchTab('dashboard')">   <span class="ni">🏆</span><span>Dashboard</span>   </button>
+      <button class="nav-tab"        data-tab="predictions"  onclick="switchTab('predictions')"> <span class="ni">🔮</span><span>Predictions</span>  </button>
+      <button class="nav-tab"        data-tab="results"      onclick="switchTab('results')">     <span class="ni">🏁</span><span>Results</span>      </button>
+      <button class="nav-tab"        data-tab="animations"   onclick="switchTab('animations')">  <span class="ni">🎬</span><span>Animations</span>   </button>
+      <button class="nav-tab"        data-tab="calendar"     onclick="switchTab('calendar')">    <span class="ni">📅</span><span>Calendar</span>     </button>
+      <button class="nav-tab"        data-tab="participants" onclick="switchTab('participants')"><span class="ni">👥</span><span>Participants</span></button>
+    </div>
+  </nav>
+
+  <main class="main">
+    <section class="tab-content active" id="tab-dashboard"></section>
+    <section class="tab-content"        id="tab-participants"></section>
+    <section class="tab-content"        id="tab-predictions"></section>
+    <section class="tab-content"        id="tab-results"></section>
+    <section class="tab-content"        id="tab-animations"></section>
+    <section class="tab-content"        id="tab-calendar"></section>
+  </main>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal" onclick="event.stopPropagation()"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     FIREBASE CONFIG — paste your project values here
+     Get from: Firebase Console → Project Settings → Your Apps → SDK setup
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBBg8FT2hGCCcTHrH6G9X21tzda0L3-2tE",
+  authDomain: "ffia-2026.firebaseapp.com",
+  databaseURL: "https://ffia-2026-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "ffia-2026",
+  storageBucket: "ffia-2026.firebasestorage.app",
+  messagingSenderId: "815773138693",
+  appId: "1:815773138693:web:801f8b7f2fddd1427c416c"
+};
+const FIREBASE_PATH = 'ffia26'; // key under which all data is stored
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════
+
+const RACE_POS   = ['p1','p2','p3','p4','p5'];
+const PODIUM_POS = ['p1','p2','p3'];
+const POS_LABEL  = { p1:'P1', p2:'P2', p3:'P3', p4:'P4', p5:'P5' };
+
+const TEAM_COLORS = {
+  'Red Bull Racing': '#3671C6', 'Ferrari':      '#E8002D',
+  'Mercedes':        '#27F4D2', 'McLaren':      '#FF8000',
+  'Aston Martin':    '#358C75', 'Alpine':       '#FF87BC',
+  'Williams':        '#64C4FF', 'RB':           '#6692FF',
+  'Sauber':          '#52E252', 'Haas':         '#B6BABD',
+  'TBD':             '#666666',
+};
+
+const DRIVERS = [
+  {id:1,  name:'Max Verstappen',    abbr:'VER', team:'Red Bull Racing',   num:3  },
+  {id:2,  name:'Isack Hadjar',      abbr:'HAD', team:'Red Bull Racing',   num:6  },
+  {id:3,  name:'Charles Leclerc',   abbr:'LEC', team:'Ferrari',           num:16 },
+  {id:4,  name:'Lewis Hamilton',    abbr:'HAM', team:'Ferrari',           num:44 },
+  {id:5,  name:'George Russell',    abbr:'RUS', team:'Mercedes',          num:63 },
+  {id:6,  name:'Kimi Antonelli',    abbr:'ANT', team:'Mercedes',          num:12 },
+  {id:7,  name:'Lando Norris',      abbr:'NOR', team:'McLaren-Mercedes',  num:4  },
+  {id:8,  name:'Oscar Piastri',     abbr:'PIA', team:'McLaren-Mercedes',  num:81 },
+  {id:9,  name:'Fernando Alonso',   abbr:'ALO', team:'Aston Martin-Honda',num:14 },
+  {id:10, name:'Lance Stroll',      abbr:'STR', team:'Aston Martin-Honda',num:18 },
+  {id:11, name:'Pierre Gasly',      abbr:'GAS', team:'Alpine-Renault',    num:10 },
+  {id:12, name:'Franco Colapinto',  abbr:'COL', team:'Alpine-Renault',    num:43 },
+  {id:13, name:'Carlos Sainz',      abbr:'SAI', team:'Williams-Mercedes', num:55 },
+  {id:14, name:'Alexander Albon',   abbr:'ALB', team:'Williams-Mercedes', num:23 },
+  {id:15, name:'Nico Hülkenberg',   abbr:'HUL', team:'Audi',              num:27 },
+  {id:16, name:'Gabriel Bortoleto', abbr:'BOR', team:'Audi',              num:5  },
+  {id:17, name:'Sergio Perez',      abbr:'PER', team:'Cadillac-Ferrari',  num:11 },
+  {id:18, name:'Valtteri Bottas',   abbr:'BOT', team:'Cadillac-Ferrari',  num:77 },
+  {id:19, name:'Liam Lawson',       abbr:'LAW', team:'Racing Bulls',      num:30 },
+  {id:20, name:'Arvid Lindblad',    abbr:'LIN', team:'Racing Bulls',      num:41 },
+  {id:21, name:'Esteban Ocon',      abbr:'OCO', team:'Haas-Ferrari',      num:31 },
+  {id:22, name:'Oliver Bearman',    abbr:'BEA', team:'Haas-Ferrari',      num:87 },
+];
+
+const RACES = [
+  {id:1,  name:'Australian Grand Prix',     circuit:'Albert Park',                    loc:'Melbourne',   date:'2026-03-08', sprint:false},
+  {id:2,  name:'Chinese Grand Prix',        circuit:'Shanghai International Circuit', loc:'Shanghai',    date:'2026-03-15', sprint:true },
+  {id:3,  name:'Japanese Grand Prix',       circuit:'Suzuka Circuit',                 loc:'Suzuka',      date:'2026-03-29', sprint:false},
+  {id:4,  name:'Bahrain Grand Prix',        circuit:'Bahrain International Circuit',  loc:'Sakhir',      date:'2026-04-12', sprint:false},
+  {id:5,  name:'Saudi Arabian Grand Prix',  circuit:'Jeddah Corniche Circuit',        loc:'Jeddah',      date:'2026-04-19', sprint:false},
+  {id:6,  name:'Miami Grand Prix',          circuit:'Miami International Autodrome',  loc:'Miami',       date:'2026-05-03', sprint:true },
+  {id:7,  name:'Canadian Grand Prix',       circuit:'Circuit Gilles Villeneuve',      loc:'Montréal',    date:'2026-05-24', sprint:true },
+  {id:8,  name:'Monaco Grand Prix',         circuit:'Circuit de Monaco',              loc:'Monaco',      date:'2026-06-07', sprint:false},
+  {id:9,  name:'Spanish Grand Prix',        circuit:'Circuit de Barcelona-Catalunya', loc:'Barcelona',   date:'2026-06-14', sprint:false},
+  {id:10, name:'Austrian Grand Prix',       circuit:'Red Bull Ring',                  loc:'Spielberg',   date:'2026-06-28', sprint:false},
+  {id:11, name:'British Grand Prix',        circuit:'Silverstone Circuit',            loc:'Silverstone', date:'2026-07-05', sprint:true },
+  {id:12, name:'Belgian Grand Prix',        circuit:'Circuit de Spa-Francorchamps',   loc:'Spa',         date:'2026-07-19', sprint:false},
+  {id:13, name:'Hungarian Grand Prix',      circuit:'Hungaroring',                    loc:'Budapest',    date:'2026-07-26', sprint:false},
+  {id:14, name:'Dutch Grand Prix',          circuit:'Circuit Zandvoort',              loc:'Zandvoort',   date:'2026-08-23', sprint:true },
+  {id:15, name:'Italian Grand Prix',        circuit:'Autodromo Nazionale Monza',      loc:'Monza',       date:'2026-09-06', sprint:false},
+  {id:16, name:'Madrid Grand Prix',         circuit:'Circuit de Madrid',              loc:'Madrid',      date:'2026-09-13', sprint:false},
+  {id:17, name:'Azerbaijan Grand Prix',     circuit:'Baku City Circuit',              loc:'Baku',        date:'2026-09-26', sprint:false},
+  {id:18, name:'Singapore Grand Prix',      circuit:'Marina Bay Street Circuit',      loc:'Singapore',   date:'2026-10-11', sprint:true },
+  {id:19, name:'United States Grand Prix',  circuit:'Circuit of the Americas',        loc:'Austin',      date:'2026-10-25', sprint:false},
+  {id:20, name:'Mexico City Grand Prix',    circuit:'Autódromo Hermanos Rodríguez',   loc:'Mexico City', date:'2026-11-01', sprint:false},
+  {id:21, name:'São Paulo Grand Prix',      circuit:'Autódromo José Carlos Pace',     loc:'São Paulo',   date:'2026-11-08', sprint:false},
+  {id:22, name:'Las Vegas Grand Prix',      circuit:'Las Vegas Strip Circuit',        loc:'Las Vegas',   date:'2026-11-21', sprint:false},
+  {id:23, name:'Qatar Grand Prix',          circuit:'Lusail International Circuit',   loc:'Lusail',      date:'2026-11-29', sprint:false},
+  {id:24, name:'Abu Dhabi Grand Prix',      circuit:'Yas Marina Circuit',             loc:'Abu Dhabi',   date:'2026-12-06', sprint:false},
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+
+const DEFAULTS = {
+  leagueName: 'FFIA Fantasy League 2026',
+  bonusDriverId: 13, // Carlos Sainz — configurable "specific driver" prediction
+  // Points awarded for each CORRECT prediction per position
+  scoring: {
+    race:        { p1: 25, p2: 18, p3: 15, p4: 10, p5:  6, topN: 5 },
+    quali:       { p1: 10, p2:  7, p3:  5 },
+    sprintquali: { p1: 10, p2:  7, p3:  5 },
+    sprint:      { p1: 15, p2: 12, p3:  8, topN: 3 },
+    bonus:       { fastestLap: 10, driverPlace: 1, dotd: 5 },
+  },
+  participants: [],
+  // predictions[raceId][participantId] = {
+  //   race:        { p1: driverId|null, p2, p3, p4, p5 },
+  //   quali:       { p1: driverId|null, p2, p3 },
+  //   sprintquali: { p1: driverId|null, p2, p3 }   <- only if sprint weekend
+  //   sprint:      { p1: driverId|null, p2, p3 }   <- only if sprint weekend
+  // }
+  predictions: {},
+  // results[raceId] = {
+  //   race:        { p1: driverId|null, p2, p3, p4, p5 },
+  //   quali:       { p1: driverId|null, p2, p3 },
+  //   sprintquali: { p1: driverId|null, p2, p3 }
+  //   sprint:      { p1: driverId|null, p2, p3 }
+  // }
+  results: {},
+  // locked[raceId] = true — predictions frozen for that race
+  locked: {},
+};
+
+let S = loadState();
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('f1fl26v1');
+    if (raw) {
+      const loaded = JSON.parse(raw);
+      const merged = Object.assign({}, DEFAULTS, loaded);
+      // Deep-merge scoring so new sub-keys survive upgrades
+      merged.scoring = Object.assign({}, DEFAULTS.scoring, loaded.scoring || {});
+      merged.scoring.race        = Object.assign({}, DEFAULTS.scoring.race,        (loaded.scoring || {}).race        || {});
+      merged.scoring.sprint      = Object.assign({}, DEFAULTS.scoring.sprint,      (loaded.scoring || {}).sprint      || {});
+      merged.scoring.bonus       = Object.assign({}, DEFAULTS.scoring.bonus,       (loaded.scoring || {}).bonus       || {});
+      if (merged.bonusDriverId == null) merged.bonusDriverId = DEFAULTS.bonusDriverId;
+      return merged;
+    }
+  } catch(_) {}
+  return Object.assign({}, DEFAULTS);
+}
+
+function save() {
+  try { localStorage.setItem('f1fl26v1', JSON.stringify(S)); } catch(_) {}
+  fbSave();
+}
+
+// ── FIREBASE ────────────────────────────────────────────────────────
+let _db = null;
+let _lastSaveMs = 0;
+
+function fbConfigured() {
+  return typeof FIREBASE_CONFIG !== 'undefined' &&
+         FIREBASE_CONFIG.databaseURL &&
+         !FIREBASE_CONFIG.databaseURL.includes('YOUR_PROJECT');
+}
+
+function syncStatus(status) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const MAP = {
+    connecting: ['⟳ Connecting…', 'var(--muted)'],
+    saving:     ['⟳ Saving…',      'var(--gold)' ],
+    synced:     ['✓ Synced',        'var(--green)'],
+    error:      ['✕ Sync error',    '#ff7070'     ],
+    offline:    ['⚡ Local only',   'var(--muted)'],
+  };
+  const [text, color] = MAP[status] || MAP.offline;
+  el.textContent = text;
+  el.style.color  = color;
+}
+
+function fbMerge(remote) {
+  // Merge remote into DEFAULTS so new keys always exist
+  const merged = Object.assign({}, DEFAULTS, remote);
+  merged.scoring        = Object.assign({}, DEFAULTS.scoring,        remote.scoring        || {});
+  merged.scoring.race   = Object.assign({}, DEFAULTS.scoring.race,   (remote.scoring||{}).race   || {});
+  merged.scoring.sprint = Object.assign({}, DEFAULTS.scoring.sprint, (remote.scoring||{}).sprint || {});
+  merged.scoring.bonus  = Object.assign({}, DEFAULTS.scoring.bonus,  (remote.scoring||{}).bonus  || {});
+  return merged;
+}
+
+function initFirebase() {
+  if (!fbConfigured()) { syncStatus('offline'); return; }
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    _db = firebase.database();
+    syncStatus('connecting');
+
+    _db.ref(FIREBASE_PATH).on('value', snap => {
+      const remote = snap.val();
+      // Skip echo of our own save
+      if (Date.now() - _lastSaveMs < 3000) { syncStatus('synced'); return; }
+      // Don't clobber an open modal
+      const overlay = document.getElementById('overlay');
+      if (overlay && overlay.style.display !== 'none' && overlay.style.display !== '') return;
+      if (remote) {
+        S = fbMerge(remote);
+        try { localStorage.setItem('f1fl26v1', JSON.stringify(S)); } catch(_) {}
+        document.getElementById('hdr-name').textContent = S.leagueName;
+        renderTab(currentTab());
+      }
+      syncStatus('synced');
+    }, () => syncStatus('error'));
+  } catch(e) {
+    console.warn('Firebase init failed:', e);
+    syncStatus('error');
+  }
+}
+
+function fbSave() {
+  if (!_db) return;
+  _lastSaveMs = Date.now();
+  syncStatus('saving');
+  _db.ref(FIREBASE_PATH).set(JSON.parse(JSON.stringify(S)))
+    .then(() => syncStatus('synced'))
+    .catch(() => { syncStatus('error'); toast('Cloud sync failed — saved locally', 'err'); });
+}
+
+function currentTab() {
+  return document.querySelector('.nav-tab.active')?.dataset.tab || 'dashboard';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DATA HELPERS
+// ═══════════════════════════════════════════════════════════════════
+
+const driverById = id => DRIVERS.find(d => d.id === id);
+const raceById   = id => RACES.find(r => r.id === id);
+const tc = team  => TEAM_COLORS[team] || '#666';
+const esc = s    => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const uid = ()   => Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+function fmtDate(str) {
+  return new Date(str + 'T12:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+}
+
+function nextRace() {
+  const today = new Date().toISOString().slice(0,10);
+  return RACES.find(r => !S.results[r.id] && r.date >= today);
+}
+
+// Points for one participant in one race
+// Driver finish position prediction: 0 pts for exact, -1pt per position off
+function driverPlacePts(predicted, actual) {
+  if (predicted == null || actual == null) return 0;
+  return -Math.abs(predicted - actual) * (S.scoring.bonus?.driverPlace || 1);
+}
+
+function calcRacePts(pid, raceId) {
+  const race = raceById(raceId);
+  const res  = S.results[raceId];
+  const pred = S.predictions[raceId]?.[pid];
+  if (!res || !pred) return 0;
+
+  let pts = 0;
+  const sessions = [
+    { key: 'race',        positions: RACE_POS   },
+    { key: 'quali',       positions: PODIUM_POS },
+    ...(race.sprint ? [
+      { key: 'sprintquali', positions: PODIUM_POS },
+      { key: 'sprint',      positions: PODIUM_POS },
+    ] : []),
+  ];
+
+  for (const { key, positions } of sessions) {
+    for (const pos of positions) {
+      const pDid = pred[key]?.[pos];
+      const rDid = res[key]?.[pos];
+      if (pDid && rDid && pDid === rDid) {
+        pts += S.scoring[key]?.[pos] || 0;
+      }
+    }
+    // Top-N bonus: driver predicted in this session appears anywhere in the
+    // actual top-N results (stacks with exact-match pts)
+    const topNPts = S.scoring[key]?.topN;
+    if (topNPts && res[key] && pred[key]) {
+      const resultSet = new Set(positions.map(p => res[key][p]).filter(Boolean));
+      for (const pos of positions) {
+        const pDid = pred[key]?.[pos];
+        if (pDid && resultSet.has(pDid)) {
+          pts += topNPts;
+        }
+      }
+    }
+  }
+
+  // Bonus predictions
+  const pb = pred.bonus || {};
+  const rb = res.bonus  || {};
+  if (pb.fastestLap  && rb.fastestLap  && pb.fastestLap  === rb.fastestLap)  pts += S.scoring.bonus?.fastestLap  || 0;
+  if (pb.driverPlace != null && rb.driverPlace != null) pts += driverPlacePts(pb.driverPlace, rb.driverPlace);
+  if (pb.dotd        && rb.dotd        && pb.dotd        === rb.dotd)        pts += S.scoring.bonus?.dotd        || 0;
+
+  return pts;
+}
+
+// Total season points for a participant
+function calcTotal(pid) {
+  return Object.keys(S.results).reduce((s, rid) => s + calcRacePts(pid, +rid), 0);
+}
+
+// How many predictions a participant submitted vs how many were correct for a race
+function predStats(pid, raceId) {
+  const race = raceById(raceId);
+  const res  = S.results[raceId];
+  const pred = S.predictions[raceId]?.[pid];
+  if (!pred) return { made: 0, correct: 0, possible: 0 };
+
+  const sessions = [
+    { key: 'race',        positions: RACE_POS   },
+    { key: 'quali',       positions: PODIUM_POS },
+    ...(race.sprint ? [
+      { key: 'sprintquali', positions: PODIUM_POS },
+      { key: 'sprint',      positions: PODIUM_POS },
+    ] : []),
+  ];
+
+  let made = 0, correct = 0, possible = 0;
+  for (const { key, positions } of sessions) {
+    for (const pos of positions) {
+      possible++;
+      const pDid = pred[key]?.[pos];
+      if (pDid) {
+        made++;
+        if (res && res[key]?.[pos] && pDid === res[key][pos]) correct++;
+      }
+    }
+  }
+  // Bonus
+  const pb = pred.bonus || {};
+  const rb = (res || {}).bonus || {};
+  possible += 3;
+  if (pb.fastestLap)  { made++; if (rb.fastestLap  && pb.fastestLap  === rb.fastestLap)  correct++; }
+  if (pb.driverPlace != null && pb.driverPlace !== 0) { made++; if (rb.driverPlace != null && pb.driverPlace === rb.driverPlace) correct++; }
+  if (pb.dotd)        { made++; if (rb.dotd        && pb.dotd        === rb.dotd)        correct++; }
+  return { made, correct, possible };
+}
+
+// Total correct predictions across all races
+function totalCorrect(pid) {
+  return Object.keys(S.results).reduce((s, rid) => {
+    const { correct } = predStats(pid, +rid);
+    return s + correct;
+  }, 0);
+}
+
+function leaderboard() {
+  return S.participants
+    .map(p => ({ ...p, total: calcTotal(p.id), correct: totalCorrect(p.id) }))
+    .sort((a, b) => b.total - a.total || b.correct - a.correct);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════════
+
+function toast(msg, type = 'ok') {
+  const c  = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML  = `${type === 'ok' ? '✓' : '✕'} ${msg}`;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `tab-${tab}`));
+  renderTab(tab);
+}
+
+function renderTab(tab) {
+  ({ dashboard: renderDashboard, participants: renderParticipants,
+     predictions: () => renderPredictions(), results: () => renderResults(),
+     animations: renderAnimations,
+     calendar: renderCalendar })[tab]?.();
+}
+
+function reRenderActive() {
+  const a = document.querySelector('.nav-tab.active');
+  if (a) renderTab(a.dataset.tab);
+}
+
+function openModal(html, wide = false) {
+  const overlay = document.getElementById('overlay');
+  const modal   = document.getElementById('modal');
+  modal.className = wide ? 'modal wide' : 'modal';
+  modal.innerHTML = html;
+  overlay.classList.add('open');
+  overlay.onclick  = e => { if (e.target === overlay) closeModal(); };
+  setTimeout(() => { const f = modal.querySelector('input,select'); if (f) f.focus(); }, 80);
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+// Builds <option> list grouped by team for driver selects
+function driverOptions(selectedId) {
+  const teams = [...new Set(DRIVERS.map(d => d.team))];
+  return `<option value="">— Select Driver —</option>` +
+    teams.map(team => {
+      const drv = DRIVERS.filter(d => d.team === team);
+      return `<optgroup label="${esc(team)}">${drv.map(d =>
+        `<option value="${d.id}" ${d.id === selectedId ? 'selected' : ''}>${d.num ? d.num + '. ' : ''}${esc(d.name)}</option>`
+      ).join('')}</optgroup>`;
+    }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER: DASHBOARD
+// ═══════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════
+// ANIMATIONS TAB
+// ═══════════════════════════════════════════════════════════════════
+
+let _animRaceId = null;
+
+const PALETTE = ['#e10600','#00aaff','#ffd700','#00d856','#ff6b35','#b44fd9','#ff4d9e','#00ffcc','#88c0d0','#ebcb8b'];
+
+function pColor(p) {
+  return p.color || PALETTE[S.participants.findIndex(x => x.id === p.id) % PALETTE.length];
+}
+
+function carSvg(color) {
+  return `<svg viewBox="0 0 108 30" width="108" height="30" style="display:block">
+    <!-- Rear wing vertical fin -->
+    <rect x="5" y="3" width="5" height="15" rx="1" fill="${color}"/>
+    <!-- Rear wing horizontal blade -->
+    <rect x="1" y="3" width="16" height="3.5" rx="1.5" fill="${color}"/>
+    <!-- Main body -->
+    <path d="M10 22 L10 13 Q10 8 16 6 Q20 3 26 3 Q34 3 42 5 L74 6 Q86 7 90 11 L92 14 L92 22 Z" fill="${color}"/>
+    <!-- Cockpit/halo -->
+    <path d="M24 5 Q28 0 36 0 Q44 0 48 5 Z" fill="${color}"/>
+    <!-- Nose cone -->
+    <polygon points="90,12 97,16 90,20" fill="${color}" opacity=".8"/>
+    <!-- Front wing strut -->
+    <rect x="91" y="15" width="7" height="5" rx=".5" fill="${color}"/>
+    <!-- Front wing blade -->
+    <rect x="90" y="21" width="17" height="3" rx="1.5" fill="${color}"/>
+    <!-- Rear wheel -->
+    <circle cx="20" cy="24" r="6" fill="${color}" opacity=".9"/>
+    <circle cx="20" cy="24" r="2.5" fill="rgba(5,5,20,.5)"/>
+    <!-- Front wheel -->
+    <circle cx="74" cy="24" r="6" fill="${color}" opacity=".9"/>
+    <circle cx="74" cy="24" r="2.5" fill="rgba(5,5,20,.5)"/>
+  </svg>`;
+}
+
+function renderBarChart(mode, lb) {
+  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+
+  if (mode === 'race' && !_animRaceId) return '<div style="color:var(--muted);padding:16px 0">No race results yet — enter results first.</div>';
+  if (lb.length === 0) return '<div style="color:var(--muted);padding:16px 0">No participants yet.</div>';
+
+  const data = lb.map(p => ({
+    ...p,
+    pts: mode === 'race' ? calcRacePts(p.id, _animRaceId) : p.total
+  })).sort((a, b) => b.pts - a.pts);
+
+  const maxAbs = Math.max(...data.map(d => Math.abs(d.pts)), 1);
+
+  return `<div class="anim-chart" id="anim-chart-${mode}">
+    ${data.map((p, i) => {
+      const color   = pColor(p);
+      const pct     = (Math.max(0, p.pts) / maxAbs * 100).toFixed(1);
+      const delay   = (i * 0.13).toFixed(2);
+      const ptsDelay = (i * 0.13 + 1.2).toFixed(2);
+      const ptsColor = p.pts < 0 ? '#ff7070' : p.pts === 0 ? 'var(--muted)' : color;
+      return `
+        <div class="anim-row">
+          <div class="anim-label">${esc(p.name)}</div>
+          <div class="anim-track-wrap">
+            <div class="anim-track">
+              <div class="anim-fill" style="--pct:${pct}%;--clr:${color};animation-delay:${delay}s">
+                <div class="anim-car-wrap">${carSvg(color)}</div>
+              </div>
+            </div>
+          </div>
+          <div class="anim-pts" style="color:${ptsColor};animation-delay:${ptsDelay}s">${p.pts} pts</div>
+        </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function replayAnims(mode) {
+  document.querySelectorAll(`#anim-chart-${mode} .anim-fill, #anim-chart-${mode} .anim-pts`).forEach(el => {
+    el.style.animation = 'none';
+    el.offsetHeight; // force reflow
+    el.style.animation = '';
+  });
+}
+
+function renderAnimations() {
+  const el = document.getElementById('tab-animations');
+  const lb = leaderboard();
+  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+
+  if (!_animRaceId || !completedRaceIds.includes(_animRaceId))
+    _animRaceId = completedRaceIds[completedRaceIds.length - 1] ?? null;
+
+  el.innerHTML = `
+    <div class="sec-hdr">
+      <h2 class="sec-title">Animations</h2>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+        <div class="card-title" style="margin:0;flex:1">Race Points</div>
+        <select class="fs" style="max-width:280px" onchange="_animRaceId=+this.value;renderAnimations()">
+          ${completedRaceIds.length === 0
+            ? `<option>No results yet</option>`
+            : completedRaceIds.map(id => {
+                const r = raceById(id);
+                return `<option value="${id}" ${id===_animRaceId?'selected':''}>Round ${id}: ${r.name}</option>`;
+              }).join('')}
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="replayAnims('race')">↺ Replay</button>
+      </div>
+      ${renderBarChart('race', lb)}
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <div class="card-title" style="margin:0;flex:1">Season Total</div>
+        <button class="btn btn-ghost btn-sm" onclick="replayAnims('season')">↺ Replay</button>
+      </div>
+      ${renderBarChart('season', lb)}
+    </div>
+  `;
+}
+
+function renderProgressionChart(lb) {
+  const completedRaces = RACES.filter(r => S.results[r.id]);
+  if (completedRaces.length === 0 || lb.length === 0) return '';
+
+  const W = 900, H = 320;
+  const padL = 42, padR = 110, padT = 24, padB = 38;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+  const n = completedRaces.length;
+
+  // Cumulative points per participant at each completed race
+  const series = lb.map(p => {
+    let cum = 0;
+    return { ...p, pts: completedRaces.map(r => { cum += calcRacePts(p.id, r.id); return cum; }) };
+  });
+
+  const maxPts = Math.max(...series.flatMap(s => s.pts), 10);
+
+  const xOf = i => padL + (n > 1 ? (i / (n - 1)) : 0.5) * chartW;
+  const yOf = v => padT + chartH - (v / maxPts) * chartH;
+
+  // Y-axis grid lines + labels (5 ticks)
+  const grid = Array.from({length: 6}, (_, i) => {
+    const v = Math.round(maxPts * i / 5 / 5) * 5;
+    const y = yOf(v);
+    return `<line x1="${padL}" y1="${y}" x2="${padL + chartW}" y2="${y}" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+            <text x="${padL - 6}" y="${y + 4}" text-anchor="end" font-size="10" fill="rgba(255,255,255,.3)">${v}</text>`;
+  }).join('');
+
+  // X-axis race labels
+  const xLabels = completedRaces.map((r, i) => {
+    const lbl = r.loc.length > 10 ? r.loc.slice(0, 9) + '…' : r.loc;
+    return `<text x="${xOf(i)}" y="${padT + chartH + 20}" text-anchor="middle" font-size="10" fill="rgba(255,255,255,.4)">${lbl}</text>`;
+  }).join('');
+
+  // Vertical tick marks on x-axis
+  const xTicks = completedRaces.map((_, i) =>
+    `<line x1="${xOf(i)}" y1="${padT + chartH}" x2="${xOf(i)}" y2="${padT + chartH + 5}" stroke="rgba(255,255,255,.2)" stroke-width="1"/>`
+  ).join('');
+
+  // Sort final y positions to offset overlapping name labels
+  const labelSlots = series.map((s, si) => ({
+    si, y: yOf(s.pts[n - 1]), color: pColor(lb[si]), name: s.name
+  })).sort((a, b) => a.y - b.y);
+  const MIN_GAP = 14;
+  for (let i = 1; i < labelSlots.length; i++) {
+    if (labelSlots[i].y - labelSlots[i-1].y < MIN_GAP)
+      labelSlots[i].y = labelSlots[i-1].y + MIN_GAP;
+  }
+  const labelY = {};
+  labelSlots.forEach(s => { labelY[s.si] = s.y; });
+
+  // Lines, dots, name labels
+  const lines = series.map((s, si) => {
+    const color = pColor(lb[si]);
+    const animDelay = (si * 0.07).toFixed(2);
+
+    if (n === 1) {
+      return `<circle cx="${xOf(0)}" cy="${yOf(s.pts[0])}" r="5" fill="${color}"/>
+              <text x="${xOf(0) + 10}" y="${yOf(s.pts[0]) + 4}" font-size="11" fill="${color}" font-weight="700">${esc(s.name)}</text>`;
+    }
+
+    const d = s.pts.map((v, i) => `${i === 0 ? 'M' : 'L'}${xOf(i).toFixed(1)} ${yOf(v).toFixed(1)}`).join(' ');
+
+    const dots = s.pts.map((v, i) => {
+      const dotDelay = (parseFloat(animDelay) + (i / (n - 1)) * 1.2).toFixed(2);
+      return `<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="3.5" fill="${color}"
+                opacity="0" style="animation:fadeDot .2s ${dotDelay}s ease forwards"/>`;
+    }).join('');
+
+    const lx = xOf(n - 1);
+    const ly = labelY[si];
+    const labelDelay = (parseFloat(animDelay) + 1.3).toFixed(2);
+
+    // Connector line from path end to label if offset
+    const actualLy = yOf(s.pts[n - 1]);
+    const connector = Math.abs(ly - actualLy) > 2
+      ? `<line x1="${(lx + 5).toFixed(1)}" y1="${actualLy.toFixed(1)}" x2="${(lx + 7).toFixed(1)}" y2="${ly.toFixed(1)}"
+               stroke="${color}" stroke-width="1" opacity=".5"
+               style="opacity:0;animation:fadeDot .2s ${labelDelay}s ease forwards"/>`
+      : '';
+
+    return `
+      <path pathLength="1" d="${d}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"
+            style="stroke-dasharray:1;stroke-dashoffset:1;animation:drawLine 1.4s ${animDelay}s cubic-bezier(.4,0,.2,1) forwards"/>
+      ${dots}
+      ${connector}
+      <text x="${(lx + 10).toFixed(1)}" y="${(ly + 4).toFixed(1)}" font-size="11" fill="${color}" font-weight="700"
+            style="opacity:0;animation:fadeDot .3s ${labelDelay}s ease forwards">${esc(s.name)}</text>
+    `;
+  }).join('');
+
+  return `
+    <div class="card">
+      <div class="card-title">Championship Progression</div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:480px;display:block;font-family:inherit">
+          <!-- axis lines -->
+          <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + chartH}" stroke="rgba(255,255,255,.15)" stroke-width="1"/>
+          <line x1="${padL}" y1="${padT + chartH}" x2="${padL + chartW}" y2="${padT + chartH}" stroke="rgba(255,255,255,.15)" stroke-width="1"/>
+          ${grid}
+          ${xTicks}
+          ${xLabels}
+          ${lines}
+        </svg>
+      </div>
+    </div>
+  `;
+}
+
+function renderDashboard() {
+  const el = document.getElementById('tab-dashboard');
+  const lb = leaderboard();
+  const done = Object.keys(S.results).length;
+  const nr = nextRace();
+
+  el.innerHTML = `
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Races Complete</div>
+        <div class="stat-value">${done}<span style="font-size:14px;color:var(--muted)"> / 24</span></div>
+        <div class="stat-sub">${24 - done} remaining</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Participants</div>
+        <div class="stat-value">${S.participants.length}<span style="font-size:14px;color:var(--muted)"> / 10</span></div>
+        <div class="stat-sub">${10 - S.participants.length} slots open</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Current Leader</div>
+        <div class="stat-value" style="font-size:20px;line-height:1.1">${lb[0] ? esc(lb[0].name) : '—'}</div>
+        <div class="stat-sub">${lb[0] ? lb[0].total + ' points' : 'No participants yet'}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Next Race</div>
+        <div class="stat-value" style="font-size:16px;line-height:1.2">${nr ? nr.name.replace(' Grand Prix',' GP') : 'Season Complete'}</div>
+        <div class="stat-sub">${nr ? fmtDate(nr.date) : ''}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Season Standings</div>
+      ${lb.length === 0 ? `
+        <div class="empty">
+          <span class="empty-icon">🏆</span>
+          <div class="empty-title">No participants yet</div>
+          <div class="empty-sub">Add participants, then enter their predictions before each race</div>
+          <button class="btn btn-primary" onclick="switchTab('participants')">Add Participants</button>
+        </div>
+      ` : `
+        <div class="tw">
+          <table>
+            <thead><tr>
+              <th>Rank</th><th>Participant</th>
+              <th style="text-align:center">Correct Preds</th>
+              <th style="text-align:right">Last Race</th>
+              <th style="text-align:right">Total Points</th>
+            </tr></thead>
+            <tbody>
+              ${lb.map((p, i) => {
+                const icon = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-weight:700">#${i+1}</span>`;
+                const lastRaceId = Object.keys(S.results).map(Number).sort((a,b)=>b-a)[0];
+                const lastPts = lastRaceId ? calcRacePts(p.id, lastRaceId) : null;
+                return `<tr>
+                  <td style="font-size:17px">${icon}</td>
+                  <td><strong>${esc(p.name)}</strong></td>
+                  <td style="text-align:center">
+                    <span style="color:var(--green);font-weight:700">${p.correct}</span>
+                  </td>
+                  <td style="text-align:right;color:var(--muted2)">${lastPts !== null ? lastPts : '—'}</td>
+                  <td style="text-align:right"><strong style="font-size:16px;color:var(--red)">${p.total}</strong></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `}
+    </div>
+
+    ${renderProgressionChart(lb)}
+
+    ${done > 0 ? (() => {
+      const completedRaces = RACES.filter(r => S.results[r.id]).slice(-8);
+      return `
+        <div class="card">
+          <div class="card-title">Race-by-Race Points ${done > 8 ? '(last 8 races)' : ''}</div>
+          <div class="tw">
+            <table>
+              <thead><tr>
+                <th>Participant</th>
+                ${completedRaces.map(r => `<th style="text-align:center">${r.loc}</th>`).join('')}
+                <th style="text-align:right">Total</th>
+              </tr></thead>
+              <tbody>
+                ${lb.map(p => `<tr>
+                  <td><strong>${esc(p.name)}</strong></td>
+                  ${completedRaces.map(r => {
+                    const pts = calcRacePts(p.id, r.id);
+                    const { correct } = predStats(p.id, r.id);
+                    return `<td style="text-align:center" title="${correct} correct predictions">
+                      <span style="font-weight:700">${pts}</span>
+                    </td>`;
+                  }).join('')}
+                  <td style="text-align:right"><strong style="color:var(--red)">${p.total}</strong></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    })() : ''}
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER: PARTICIPANTS
+// ═══════════════════════════════════════════════════════════════════
+
+function renderParticipants() {
+  const el = document.getElementById('tab-participants');
+  const lb = leaderboard();
+
+  el.innerHTML = `
+    <div class="sec-hdr">
+      <h2 class="sec-title">Participants</h2>
+    </div>
+    <div class="p-grid">
+      ${lb.map((p, i) => {
+        const icon = i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`;
+        const donePreds = Object.keys(S.predictions).filter(rid => S.predictions[rid][p.id]?.race?.p1).length;
+        return `
+          <div class="p-card" onclick="openEditParticipant('${p.id}')">
+            <div class="p-card-hdr">
+              <div>
+                <div style="font-size:10px;color:var(--muted);margin-bottom:3px">${icon} RANK</div>
+                <div class="p-name">${esc(p.name)}</div>
+              </div>
+              <div>
+                <div class="p-pts">${p.total}</div>
+                <div class="p-pts-lbl">PTS</div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)">
+              <span>✓ ${p.correct} correct predictions</span>
+              <span>${donePreds} races predicted</span>
+            </div>
+          </div>
+        `;
+      }).join('')}
+      ${S.participants.length < 10 ? `
+        <div class="add-p-card" onclick="openAddParticipant()">
+          <span style="font-size:26px">+</span>
+          <span>Add Participant</span>
+        </div>
+      ` : ''}
+    </div>
+    ${S.participants.length === 0 ? `
+      <div class="empty">
+        <span class="empty-icon">👥</span>
+        <div class="empty-title">No participants yet</div>
+        <div class="empty-sub">Add up to 10 people to the league</div>
+      </div>
+    ` : ''}
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER: PREDICTIONS TAB
+// ═══════════════════════════════════════════════════════════════════
+
+let _predRaceId = null;
+
+function renderPredictions(raceId) {
+  if (raceId != null) _predRaceId = raceId;
+  if (!_predRaceId) { const nr = nextRace(); _predRaceId = nr ? nr.id : RACES[0].id; }
+
+  const el   = document.getElementById('tab-predictions');
+  const race = raceById(_predRaceId);
+  const res  = S.results[_predRaceId];
+  const locked = !!S.locked[_predRaceId];
+  const hasParticipants = S.participants.length > 0;
+
+  const countWithPreds = S.participants.filter(p => {
+    const pred = S.predictions[_predRaceId]?.[p.id];
+    return pred?.race?.p1;
+  }).length;
+
+  el.innerHTML = `
+    <div class="sec-hdr">
+      <h2 class="sec-title">Predictions</h2>
+      <div class="sec-actions">
+        ${locked
+          ? `<span class="badge badge-locked">🔒 Locked</span>
+             <button class="btn btn-ghost btn-sm" onclick="toggleLock(${_predRaceId})">🔓 Unlock</button>`
+          : `<button class="btn btn-ghost btn-sm" onclick="toggleLock(${_predRaceId})">🔒 Lock Predictions</button>`}
+        ${hasParticipants && !locked
+          ? `<button class="btn btn-primary" onclick="openPredictionsModal(${_predRaceId})">✏ Enter Predictions</button>`
+          : hasParticipants && locked
+          ? `<button class="btn btn-ghost btn-sm" onclick="openPredictionsModal(${_predRaceId})">👁 View Predictions</button>`
+          : ''}
+      </div>
+    </div>
+
+    <!-- Race selector -->
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <label class="fl">Select Race</label>
+          <select class="fs" onchange="renderPredictions(+this.value)">
+            ${RACES.map(r => `<option value="${r.id}" ${r.id===_predRaceId?'selected':''}>Round ${r.id}: ${r.name}</option>`).join('')}
+          </select>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div style="text-align:center">
+            <div class="stat-label">Date</div>
+            <div style="font-size:14px;font-weight:600">${fmtDate(race.date)}</div>
+          </div>
+          <div style="text-align:center">
+            <div class="stat-label">Sprint</div>
+            <div style="font-size:14px;font-weight:600">${race.sprint ? '<span style="color:var(--red)">Yes</span>' : 'No'}</div>
+          </div>
+          <div style="text-align:center">
+            <div class="stat-label">Predicted</div>
+            <div style="font-size:14px;font-weight:600">${countWithPreds} / ${S.participants.length}</div>
+          </div>
+          <div style="text-align:center">
+            <div class="stat-label">Results</div>
+            <div style="font-size:14px;font-weight:600">${res ? '<span style="color:var(--green)">In</span>' : '<span style="color:var(--muted)">Pending</span>'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    ${!hasParticipants ? `
+      <div class="empty">
+        <span class="empty-icon">🔮</span>
+        <div class="empty-title">No participants yet</div>
+        <div class="empty-sub">Add participants first, then enter their predictions</div>
+        <button class="btn btn-primary" onclick="switchTab('participants')">Add Participants</button>
+      </div>
+    ` : `
+      ${renderParticipantCards(_predRaceId)}
+      ${renderPredTable(_predRaceId)}
+    `}
+  `;
+}
+
+function renderParticipantCards(raceId) {
+  const race   = raceById(raceId);
+  const locked = !!S.locked[raceId];
+
+  // Work out how many positions are preditable per participant
+  const sessions = [
+    { key: 'race',  positions: RACE_POS   },
+    { key: 'quali', positions: PODIUM_POS },
+    ...(race.sprint ? [
+      { key: 'sprintquali', positions: PODIUM_POS },
+      { key: 'sprint',      positions: PODIUM_POS },
+    ] : []),
+  ];
+  const totalSlots = sessions.reduce((s, sess) => s + sess.positions.length, 0);
+
+  const filledSlots = pid => sessions.reduce((s, sess) => {
+    const pred = S.predictions[raceId]?.[pid] || {};
+    return s + sess.positions.filter(pos => pred[sess.key]?.[pos]).length;
+  }, 0);
+
+  const cards = S.participants.map(p => {
+    const filled  = filledSlots(p.id);
+    const pct     = totalSlots ? Math.round(filled / totalSlots * 100) : 0;
+    const isDone  = filled === totalSlots;
+    const barClr  = isDone ? 'var(--green)' : pct > 0 ? 'var(--red)' : 'rgba(255,255,255,.2)';
+    return `
+      <button class="pq-card${isDone ? ' pq-done' : ''}" onclick="openPredictionsModal(${raceId}, '${p.id}')">
+        <div class="pq-name">${esc(p.name)}</div>
+        <div class="pq-count">${filled} / ${totalSlots} positions${locked ? ' 👁' : ' ✏'}</div>
+        <div class="pq-bar-bg">
+          <div class="pq-bar-fill" style="width:${pct}%;background:${barClr}"></div>
+        </div>
+      </button>`;
+  }).join('');
+
+  return `<div class="pq-grid">${cards}</div>`;
+}
+
+function renderPredTable(raceId) {
+  const race = raceById(raceId);
+  const res  = S.results[raceId];
+  const lb   = leaderboard(); // sorted participants
+
+  const sessions = [
+    { key: 'race',        label: 'Race Predictions',             positions: RACE_POS,   icon: '🏁' },
+    { key: 'quali',       label: 'Qualifying Predictions',       positions: PODIUM_POS, icon: '🕐' },
+    ...(race.sprint ? [
+      { key: 'sprintquali', label: 'Sprint Quali Predictions',  positions: PODIUM_POS, icon: '🔫' },
+      { key: 'sprint',      label: 'Sprint Race Predictions',   positions: PODIUM_POS, icon: '⚡' },
+    ] : []),
+  ];
+
+  const getPred = (pid, session, pos) => S.predictions[raceId]?.[pid]?.[session]?.[pos] || null;
+  const getRes  = (session, pos)      => res?.[session]?.[pos] || null;
+
+  const cellHtml = (pid, session, pos, topNSet) => {
+    const pDid = getPred(pid, session, pos);
+    const rDid = getRes(session, pos);
+    const d = pDid ? driverById(pDid) : null;
+
+    if (!d) return `<td class="pc pc-nil">—</td>`;
+
+    let cls = 'pc';
+    let icon = '';
+    if (rDid !== null) {
+      if (pDid === rDid)                          { cls += ' pc-ok';      icon = ' ✓'; }
+      else if (topNSet && topNSet.has(pDid))      { cls += ' pc-partial'; icon = ' ~'; }
+      else                                        { cls += ' pc-no';      icon = ' ✗'; }
+    }
+    return `<td class="${cls}">
+      <span style="display:inline-flex;align-items:center;gap:3px">
+        <span class="dot" style="background:${tc(d.team)}"></span>${d.abbr}${icon}
+      </span>
+    </td>`;
+  };
+
+  // ── Bonus helpers ────────────────────────────────────────────────
+  const bonusDrv    = driverById(S.bonusDriverId);
+  const bonusMaxPts = (S.scoring.bonus?.fastestLap || 0) + (S.scoring.bonus?.dotd || 0);
+
+  const bonusDriverCell = (pid, field) => {
+    const pDid = S.predictions[raceId]?.[pid]?.bonus?.[field] || null;
+    const rDid = res?.bonus?.[field] || null;
+    const d = pDid ? driverById(pDid) : null;
+    if (!d) return `<td class="pc pc-nil">—</td>`;
+    let cls = 'pc', icon = '';
+    if (rDid != null) { cls += pDid === rDid ? ' pc-ok' : ' pc-no'; icon = pDid === rDid ? ' ✓' : ' ✗'; }
+    return `<td class="${cls}"><span style="display:inline-flex;align-items:center;gap:3px"><span class="dot" style="background:${tc(d.team)}"></span>${d.abbr}${icon}</span></td>`;
+  };
+  const resDrvCell = field => {
+    const did = res?.bonus?.[field];
+    const d = did ? driverById(did) : null;
+    return `<td class="pc pc-res">${d ? `<span style="display:inline-flex;align-items:center;gap:3px"><span class="dot" style="background:${tc(d.team)}"></span>${d.abbr}</span>` : '<span style="color:var(--muted)">—</span>'}</td>`;
+  };
+
+  // Section-header row spanning all columns
+  const secHdr = (icon, label, maxPts) => {
+    const cols = 2 + lb.length; // label col + participants + result
+    return `<tr style="background:rgba(225,6,0,.06)">
+      <td colspan="${cols}" style="padding:6px 10px;border-left:3px solid var(--red)">
+        <span style="font-size:14px">${icon}</span>
+        <strong style="color:var(--red);text-transform:uppercase;letter-spacing:.5px;font-size:11px;margin-left:6px">${label}</strong>
+        <span style="font-size:10px;color:var(--muted);margin-left:8px">Max ${maxPts} pts</span>
+      </td>
+    </tr>`;
+  };
+
+  // Build session rows
+  const sessionRows = sessions.map(sess => {
+    const maxPts = sess.positions.reduce((s, pos) => s + (S.scoring[sess.key]?.[pos] || 0), 0);
+    const topNPts = S.scoring[sess.key]?.topN || 0;
+    const topNSet = res?.[sess.key]
+      ? new Set(sess.positions.map(p => res[sess.key][p]).filter(Boolean))
+      : null;
+
+    const exactPts = pid => sess.positions.reduce((acc, pos) => {
+      const pDid = getPred(pid, sess.key, pos);
+      const rDid = getRes(sess.key, pos);
+      return (pDid && rDid && pDid === rDid) ? acc + (S.scoring[sess.key]?.[pos] || 0) : acc;
+    }, 0);
+
+    const topNBonus = pid => {
+      if (!topNPts || !topNSet) return 0;
+      return sess.positions.reduce((acc, pos) => {
+        const pDid = getPred(pid, sess.key, pos);
+        return (pDid && topNSet.has(pDid)) ? acc + topNPts : acc;
+      }, 0);
+    };
+
+    return secHdr(sess.icon, sess.label, maxPts) +
+      sess.positions.map(pos => {
+        const rDid = getRes(sess.key, pos);
+        const rDrv = rDid ? driverById(rDid) : null;
+        const pts  = S.scoring[sess.key]?.[pos] || 0;
+        return `<tr>
+          <td>
+            <strong style="color:var(--red)">${POS_LABEL[pos]}</strong>
+            <span style="font-size:10px;color:var(--muted);margin-left:5px">(${pts}pts)</span>
+          </td>
+          ${lb.map(p => cellHtml(p.id, sess.key, pos, topNSet)).join('')}
+          <td class="pc pc-res">
+            ${rDrv
+              ? `<span style="display:inline-flex;align-items:center;gap:3px"><span class="dot" style="background:${tc(rDrv.team)}"></span>${rDrv.abbr}</span>`
+              : `<span style="color:var(--muted)">—</span>`}
+          </td>
+        </tr>`;
+      }).join('') +
+      (res?.[sess.key] ? `
+        <tr style="background:rgba(255,255,255,.02)">
+          <td style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding-left:16px">Position Pts</td>
+          ${lb.map(p => {
+            const pts = exactPts(p.id);
+            return `<td class="pc pc-pts" style="text-align:center;color:${pts > 0 ? 'var(--green)' : 'var(--muted)'}">${pts}</td>`;
+          }).join('')}
+          <td></td>
+        </tr>
+        ${topNPts ? `
+        <tr style="background:rgba(255,165,0,.04)">
+          <td style="font-size:10px;font-weight:700;color:#ffaa00;text-transform:uppercase;letter-spacing:.5px;padding-left:16px">Top-${sess.positions.length} ~ Bonus <span style="font-size:9px;color:var(--muted)">(${topNPts}pts each)</span></td>
+          ${lb.map(p => {
+            const pts = topNBonus(p.id);
+            return `<td class="pc pc-pts" style="text-align:center;color:${pts > 0 ? '#ffaa00' : 'var(--muted)'}">${pts}</td>`;
+          }).join('')}
+          <td></td>
+        </tr>
+        ` : ''}
+      ` : '');
+  }).join('');
+
+  // Build bonus rows
+  const bonusRows = secHdr('⭐', 'Bonus Predictions', bonusMaxPts) + `
+    <tr>
+      <td><strong style="color:var(--red)">Fastest Lap</strong> <span style="font-size:10px;color:var(--muted);margin-left:5px">(${S.scoring.bonus?.fastestLap || 0}pts)</span></td>
+      ${lb.map(p => bonusDriverCell(p.id, 'fastestLap')).join('')}
+      ${resDrvCell('fastestLap')}
+    </tr>
+    <tr>
+      <td>
+        <strong style="color:var(--red)">${bonusDrv ? esc(bonusDrv.name) : 'Driver'} Finishes</strong>
+        <span style="font-size:10px;color:var(--muted);margin-left:5px">(−1pt/pos off)</span>
+      </td>
+      ${lb.map(p => {
+        const pPos = S.predictions[raceId]?.[p.id]?.bonus?.driverPlace;
+        const rPos = res?.bonus?.driverPlace;
+        if (pPos == null || pPos === 0) return `<td class="pc pc-nil">—</td>`;
+        if (rPos == null) return `<td class="pc">P${pPos}</td>`;
+        const diff = Math.abs(pPos - rPos);
+        const penalty = -diff * (S.scoring.bonus?.driverPlace || 1);
+        const cls = diff === 0 ? 'pc pc-ok' : 'pc pc-no';
+        const label = diff === 0 ? `P${pPos} ✓` : `P${pPos} (${penalty})`;
+        return `<td class="${cls}">${label}</td>`;
+      }).join('')}
+      <td class="pc pc-res">${res?.bonus?.driverPlace != null ? `P${res.bonus.driverPlace}` : '<span style="color:var(--muted)">—</span>'}</td>
+    </tr>
+    <tr>
+      <td><strong style="color:var(--red)">Driver of the Day</strong> <span style="font-size:10px;color:var(--muted);margin-left:5px">(${S.scoring.bonus?.dotd || 0}pts)</span></td>
+      ${lb.map(p => bonusDriverCell(p.id, 'dotd')).join('')}
+      ${resDrvCell('dotd')}
+    </tr>
+    ${res?.bonus ? `
+      <tr>
+        <td style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Points</td>
+        ${lb.map(p => {
+          const pb = S.predictions[raceId]?.[p.id]?.bonus || {};
+          const rb = res.bonus;
+          let bpts = 0;
+          if (pb.fastestLap  && rb.fastestLap  && pb.fastestLap  === rb.fastestLap)  bpts += S.scoring.bonus?.fastestLap  || 0;
+          if (pb.driverPlace != null && rb.driverPlace != null) bpts += driverPlacePts(pb.driverPlace, rb.driverPlace);
+          if (pb.dotd        && rb.dotd        && pb.dotd        === rb.dotd)        bpts += S.scoring.bonus?.dotd        || 0;
+          return `<td class="pc pc-pts" style="text-align:center;color:${bpts>0?'var(--green)':bpts<0?'#ff7070':'var(--muted)'}">${bpts}</td>`;
+        }).join('')}
+        <td></td>
+      </tr>
+    ` : ''}
+  `;
+
+  return `
+    <div class="card" style="margin-bottom:14px">
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>Prediction</th>
+            ${lb.map(p => `<th style="text-align:center;min-width:80px">${esc(p.name)}</th>`).join('')}
+            <th style="text-align:center;min-width:90px;color:var(--gold)">★ Result</th>
+          </tr></thead>
+          <tbody>
+            ${sessionRows}
+            ${bonusRows}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  ` + (res && lb.length > 0 ? `
+    <div class="card">
+      <div class="card-title">Race Points Summary</div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>Participant</th>
+            <th style="text-align:center">Race Pos</th>
+            <th style="text-align:center;color:#ffaa00">Race ~</th>
+            <th style="text-align:center">Quali</th>
+            ${race.sprint ? `
+              <th style="text-align:center">Sp.Quali</th>
+              <th style="text-align:center">Sprint Pos</th>
+              <th style="text-align:center;color:#ffaa00">Sprint ~</th>
+            ` : ''}
+            <th style="text-align:center">Bonus</th>
+            <th style="text-align:center">Correct</th>
+            <th style="text-align:right">Total</th>
+          </tr></thead>
+          <tbody>
+            ${lb.map(p => {
+              const calcSession = key => {
+                const positions = key === 'race' ? RACE_POS : PODIUM_POS;
+                const exact = positions.reduce((s, pos) => {
+                  const pDid = getPred(p.id, key, pos);
+                  const rDid = getRes(key, pos);
+                  return (pDid && rDid && pDid === rDid) ? s + (S.scoring[key]?.[pos] || 0) : s;
+                }, 0);
+                const topN = S.scoring[key]?.topN || 0;
+                let bonus = 0;
+                if (topN && res[key]) {
+                  const rSet = new Set(positions.map(pos => res[key][pos]).filter(Boolean));
+                  bonus = positions.reduce((s, pos) => {
+                    const pDid = getPred(p.id, key, pos);
+                    return (pDid && rSet.has(pDid)) ? s + topN : s;
+                  }, 0);
+                }
+                return { exact, bonus };
+              };
+              const race_   = calcSession('race');
+              const quali_  = (() => {
+                const positions = PODIUM_POS;
+                return positions.reduce((s, pos) => {
+                  const pDid = getPred(p.id, 'quali', pos);
+                  const rDid = getRes('quali', pos);
+                  return (pDid && rDid && pDid === rDid) ? s + (S.scoring.quali?.[pos] || 0) : s;
+                }, 0);
+              })();
+              const sprintquali_ = race.sprint ? (() => {
+                const positions = PODIUM_POS;
+                return positions.reduce((s, pos) => {
+                  const pDid = getPred(p.id, 'sprintquali', pos);
+                  const rDid = getRes('sprintquali', pos);
+                  return (pDid && rDid && pDid === rDid) ? s + (S.scoring.sprintquali?.[pos] || 0) : s;
+                }, 0);
+              })() : null;
+              const sprint_  = race.sprint ? calcSession('sprint') : null;
+              const { correct } = predStats(p.id, raceId);
+              const total = calcRacePts(p.id, raceId);
+              const bpred = S.predictions[raceId]?.[p.id]?.bonus || {};
+              const bres  = res?.bonus || {};
+              let bpts = 0;
+              if (bpred.fastestLap  && bres.fastestLap  && bpred.fastestLap  === bres.fastestLap)  bpts += S.scoring.bonus?.fastestLap  || 0;
+              if (bpred.driverPlace != null && bres.driverPlace != null) bpts += driverPlacePts(bpred.driverPlace, bres.driverPlace);
+              if (bpred.dotd        && bres.dotd        && bpred.dotd        === bres.dotd)        bpts += S.scoring.bonus?.dotd        || 0;
+              const cell = (v, color) => `<td style="text-align:center;font-weight:700;color:${v>0?color:'var(--muted)'};">${v}</td>`;
+              return `<tr>
+                <td><strong>${esc(p.name)}</strong></td>
+                ${cell(race_.exact, 'var(--green)')}
+                ${cell(race_.bonus, '#ffaa00')}
+                ${cell(quali_, 'var(--green)')}
+                ${race.sprint ? `${cell(sprintquali_, 'var(--green)')}${cell(sprint_.exact, 'var(--green)')}${cell(sprint_.bonus, '#ffaa00')}` : ''}
+                ${cell(bpts, 'var(--green)')}
+                <td style="text-align:center;color:var(--muted2)">${correct}</td>
+                <td style="text-align:right"><strong style="font-size:15px;color:var(--red)">${total}</strong></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  ` : '');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER: RESULTS TAB
+// ═══════════════════════════════════════════════════════════════════
+
+let _resRaceId = null;
+
+function renderResults(raceId) {
+  if (raceId != null) _resRaceId = raceId;
+  if (!_resRaceId) { const nr = nextRace(); _resRaceId = nr ? nr.id : RACES[0].id; }
+
+  const el   = document.getElementById('tab-results');
+  const race = raceById(_resRaceId);
+  const res  = S.results[_resRaceId];
+  const done = RACES.filter(r => S.results[r.id]);
+
+  el.innerHTML = `
+    <div class="sec-hdr">
+      <h2 class="sec-title">Race Results</h2>
+      <button class="btn btn-primary" onclick="openResultsModal(${_resRaceId})">
+        ${res ? '✏ Edit Results' : '+ Enter Results'}
+      </button>
+    </div>
+
+    <!-- Race selector -->
+    <div class="card" style="margin-bottom:16px">
+      <label class="fl">Select Race</label>
+      <select class="fs" onchange="renderResults(+this.value)">
+        ${RACES.map(r => `<option value="${r.id}" ${r.id===_resRaceId?'selected':''}>Round ${r.id}: ${r.name}${S.results[r.id]?' ✓':''}</option>`).join('')}
+      </select>
+    </div>
+
+    ${res ? `
+      <!-- Show entered results -->
+      ${buildResultsDisplay(_resRaceId)}
+    ` : `
+      <div class="empty">
+        <span class="empty-icon">🏁</span>
+        <div class="empty-title">No results for ${esc(race.name)}</div>
+        <div class="empty-sub">Enter the top finishing positions to calculate fantasy points</div>
+        <button class="btn btn-primary" onclick="openResultsModal(${_resRaceId})">Enter Results</button>
+      </div>
+    `}
+
+    ${done.length > 0 ? `
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">All Completed Races</div>
+        <div class="tw">
+          <table>
+            <thead><tr>
+              <th>Round</th><th>Grand Prix</th><th>Date</th>
+              <th>Race Winner</th><th>Pole</th><th>Sprint Pole</th><th>Sprint Winner</th><th></th>
+            </tr></thead>
+            <tbody>
+              ${done.map(r => {
+                const rr = S.results[r.id];
+                const winner      = rr?.race?.p1        ? driverById(rr.race.p1)        : null;
+                const pole        = rr?.quali?.p1       ? driverById(rr.quali.p1)       : null;
+                const sprintPole  = rr?.sprintquali?.p1 ? driverById(rr.sprintquali.p1) : null;
+                const sprint      = rr?.sprint?.p1      ? driverById(rr.sprint.p1)      : null;
+                return `<tr>
+                  <td style="color:var(--muted);font-weight:700">R${r.id}</td>
+                  <td><strong>${esc(r.name)}</strong>${r.sprint?` <span style="font-size:10px;color:var(--red);font-weight:700">SPRINT</span>`:''}</td>
+                  <td style="color:var(--muted)">${fmtDate(r.date)}</td>
+                  <td>${winner     ? chipHtml(winner)     : '—'}</td>
+                  <td>${pole       ? chipHtml(pole)       : '—'}</td>
+                  <td>${sprintPole ? chipHtml(sprintPole) : '—'}</td>
+                  <td>${sprint     ? chipHtml(sprint)     : '—'}</td>
+                  <td>
+                    <button class="btn btn-ghost btn-xs" onclick="renderResults(${r.id});switchTab('results')">View</button>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ` : ''}
+  `;
+}
+
+function buildResultsDisplay(raceId) {
+  const race = raceById(raceId);
+  const res  = S.results[raceId];
+
+  const sessionsToShow = [
+    { key: 'race',        label: 'Race Result',          positions: RACE_POS,   icon: '🏁' },
+    { key: 'quali',       label: 'Qualifying Result',    positions: PODIUM_POS, icon: '🕐' },
+    ...(race.sprint ? [
+      { key: 'sprintquali', label: 'Sprint Quali Result', positions: PODIUM_POS, icon: '🔫' },
+      { key: 'sprint',      label: 'Sprint Race Result',  positions: PODIUM_POS, icon: '⚡' },
+    ] : []),
+  ];
+
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+    ${sessionsToShow.map(sess => `
+      <div class="card">
+        <div class="session-hdr" style="margin:-20px -20px 14px">
+          <span style="font-size:16px">${sess.icon}</span>
+          <span class="session-hdr-title">${sess.label}</span>
+        </div>
+        ${sess.positions.map((pos, i) => {
+          const did = res[sess.key]?.[pos];
+          const d   = did ? driverById(did) : null;
+          const medals = ['🥇','🥈','🥉','4th','5th'];
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:${i<sess.positions.length-1?'1px solid var(--border)':'none'}">
+            <span style="font-size:${i<3?'18px':'13px'};width:24px;text-align:center">${medals[i]}</span>
+            ${d ? `
+              <span class="dot" style="background:${tc(d.team)}"></span>
+              <div>
+                <div style="font-weight:700;font-size:13px">${esc(d.name)}</div>
+                <div style="font-size:11px;color:var(--muted)">${esc(d.team)}</div>
+              </div>
+            ` : `<span style="color:var(--muted)">—</span>`}
+          </div>`;
+        }).join('')}
+      </div>
+    `).join('')}
+    <!-- Bonus Results Card -->
+    <div class="card">
+      <div class="session-hdr" style="margin:-20px -20px 14px">
+        <span style="font-size:16px">⭐</span>
+        <span class="session-hdr-title">Bonus Results</span>
+      </div>
+      ${[
+        { label: 'Fastest Lap',                                                    val: res.bonus?.fastestLap,  type: 'driver' },
+        { label: `${esc(driverById(S.bonusDriverId)?.name||'Driver')} Finishes`,  val: res.bonus?.driverPlace, type: 'pos'    },
+        { label: 'Driver of the Day',                                              val: res.bonus?.dotd,        type: 'driver' },
+      ].map((row, i) => {
+        const d = row.type === 'driver' && row.val ? driverById(row.val) : null;
+        const display = row.type === 'driver'
+          ? (d ? `<span style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:${tc(d.team)}"></span><div><div style="font-weight:700;font-size:13px">${esc(d.name)}</div><div style="font-size:11px;color:var(--muted)">${esc(d.team)}</div></div></span>` : '<span style="color:var(--muted)">—</span>')
+          : (row.val != null ? `<span style="font-weight:700;font-size:16px">P${row.val}</span>` : '<span style="color:var(--muted)">—</span>');
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:${i<2?'1px solid var(--border)':'none'}">
+          <div style="font-size:11px;color:var(--muted);width:100px;flex-shrink:0">${row.label}</div>
+          ${display}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function chipHtml(d) {
+  if (!d) return '—';
+  return `<span style="display:inline-flex;align-items:center;gap:5px">
+    <span class="dot" style="background:${tc(d.team)}"></span>${esc(d.name)}
+  </span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER: CALENDAR
+// ═══════════════════════════════════════════════════════════════════
+
+function renderCalendar() {
+  const el = document.getElementById('tab-calendar');
+  const nr = nextRace();
+  const done = Object.keys(S.results).length;
+
+  el.innerHTML = `
+    <div class="sec-hdr">
+      <h2 class="sec-title">2025 Season Calendar</h2>
+      <span style="color:var(--muted);font-size:13px">${done} of 24 complete</span>
+    </div>
+    <div class="cal-grid">
+      ${RACES.map(race => {
+        const isDone = !!S.results[race.id];
+        const isNext = nr && nr.id === race.id;
+        const winner = S.results[race.id]?.race?.p1 ? driverById(S.results[race.id].race.p1) : null;
+        return `
+          <div class="race-card ${isDone?'done':''} ${isNext?'nxt':''}"
+               onclick="switchTab('predictions');renderPredictions(${race.id})">
+            <div class="race-rnd">Round ${race.id}${race.sprint?' · <span style="color:var(--red)">Sprint</span>':''}</div>
+            <div class="race-nm">${esc(race.name)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${race.circuit}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:11px;color:var(--muted)">${fmtDate(race.date)}</span>
+              <span class="badge ${isDone?'badge-done':isNext?'badge-next':'badge-upcoming'}">
+                ${isDone?'✓ Done':isNext?'Next':'Upcoming'}
+              </span>
+            </div>
+            ${isDone && winner ? `
+              <div style="margin-top:7px;padding-top:7px;border-top:1px solid var(--border);font-size:11px;color:var(--muted2)">
+                🏆 ${esc(winner.name)}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODAL: ADD / EDIT PARTICIPANT
+// ═══════════════════════════════════════════════════════════════════
+
+function openAddParticipant()      { openParticipantModal(null); }
+function openEditParticipant(pid)  { openParticipantModal(pid); }
+
+function openParticipantModal(pid) {
+  const p = pid ? S.participants.find(p => p.id === pid) : null;
+  const PALETTE = ['#e10600','#00aaff','#ffd700','#00d856','#ff6b35','#b44fd9','#ff4d9e','#00ffcc','#88c0d0','#ebcb8b'];
+  const defaultColor = p?.color || PALETTE[S.participants.length % PALETTE.length];
+  openModal(`
+    <div class="modal-hdr">
+      <div class="modal-title">${p ? 'Edit Participant' : 'Add Participant'}</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label class="fl">Name</label>
+        <input class="fi" id="p-name" type="text" placeholder="Enter participant name…"
+               value="${p ? esc(p.name) : ''}" maxlength="30"
+               onkeydown="if(event.key==='Enter')saveParticipant('${pid||''}')">
+      </div>
+      <div class="fg" style="margin-top:12px">
+        <label class="fl">Car Colour</label>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="color" id="p-color" value="${defaultColor}"
+                 style="width:44px;height:36px;border:none;background:none;cursor:pointer;border-radius:6px;padding:2px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${PALETTE.map(c => `<button onclick="document.getElementById('p-color').value='${c}'"
+              style="width:22px;height:22px;border-radius:50%;background:${c};border:2px solid rgba(255,255,255,.15);cursor:pointer;padding:0"
+              title="${c}"></button>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <div>${p ? `<button class="btn btn-danger" onclick="deleteParticipant('${p.id}')">Delete</button>` : ''}</div>
+      <div class="modal-foot-right">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveParticipant('${pid||''}')">
+          ${p ? 'Save' : 'Add Participant'}
+        </button>
+      </div>
+    </div>
+  `);
+}
+
+function saveParticipant(pid) {
+  const name  = document.getElementById('p-name').value.trim();
+  const color = document.getElementById('p-color')?.value || '#e10600';
+  if (!name) { toast('Please enter a name', 'err'); return; }
+
+  if (pid) {
+    const idx = S.participants.findIndex(p => p.id === pid);
+    if (idx >= 0) { S.participants[idx].name = name; S.participants[idx].color = color; }
+    toast('Participant updated');
+  } else {
+    S.participants.push({ id: uid(), name, color });
+    toast('Participant added!');
+  }
+  save(); closeModal(); renderParticipants();
+}
+
+function deleteParticipant(pid) {
+  if (!confirm('Delete this participant and all their predictions?')) return;
+  S.participants = S.participants.filter(p => p.id !== pid);
+  // Clean up their predictions
+  Object.keys(S.predictions).forEach(rid => {
+    if (S.predictions[rid][pid]) delete S.predictions[rid][pid];
+  });
+  save(); closeModal(); renderParticipants();
+  toast('Participant removed');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODAL: ENTER / EDIT PREDICTIONS (per participant, with navigation)
+// ═══════════════════════════════════════════════════════════════════
+
+let _pred = { raceId: null, idx: 0, buf: {} };
+
+function openPredictionsModal(raceId, startPid) {
+  if (S.participants.length === 0) { toast('Add participants first', 'err'); return; }
+  _pred.raceId = raceId;
+  _pred.idx    = startPid != null
+    ? Math.max(0, S.participants.findIndex(p => p.id === startPid))
+    : 0;
+  // Deep-copy existing predictions into buffer
+  _pred.buf = {};
+  S.participants.forEach(p => {
+    const existing = S.predictions[raceId]?.[p.id] || {};
+    _pred.buf[p.id] = {
+      race:        Object.assign({}, existing.race        || {}),
+      quali:       Object.assign({}, existing.quali       || {}),
+      sprintquali: Object.assign({}, existing.sprintquali || {}),
+      sprint:      Object.assign({}, existing.sprint      || {}),
+      bonus:       Object.assign({}, existing.bonus       || {}),
+    };
+  });
+  renderPredModal();
+}
+
+function renderPredModal() {
+  const race = raceById(_pred.raceId);
+  const p    = S.participants[_pred.idx];
+  const buf  = _pred.buf[p.id];
+  const locked = !!S.locked[_pred.raceId];
+
+  const sessions = [
+    { key: 'race',        label: 'Race',         positions: RACE_POS,   icon: '🏁', pts: S.scoring.race        },
+    { key: 'quali',       label: 'Qualifying',   positions: PODIUM_POS, icon: '🕐', pts: S.scoring.quali       },
+    ...(race.sprint ? [
+      { key: 'sprintquali', label: 'Sprint Quali', positions: PODIUM_POS, icon: '🔫', pts: S.scoring.sprintquali },
+      { key: 'sprint',      label: 'Sprint Race',  positions: PODIUM_POS, icon: '⚡', pts: S.scoring.sprint      },
+    ] : []),
+  ];
+
+  const totalMaxPts = sessions.reduce((s, sess) =>
+    s + sess.positions.reduce((s2, pos) => s2 + (sess.pts[pos] || 0), 0), 0)
+    + (S.scoring.bonus?.fastestLap || 0) + (S.scoring.bonus?.dotd || 0);
+
+  openModal(`
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-title">Predictions — ${esc(race.name)}</div>
+        <div class="modal-title-sub">Round ${race.id} · ${fmtDate(race.date)} · Max ${totalMaxPts} pts${locked?' · 🔒 Locked':''}</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="pred-nav">
+      <button class="btn btn-ghost btn-sm" onclick="predNav(-1)" ${_pred.idx === 0 ? 'disabled style="opacity:.4"' : ''}>← Prev</button>
+      <div>
+        <div class="pred-nav-name">${esc(p.name)}</div>
+        <div class="pred-nav-count">${_pred.idx + 1} of ${S.participants.length} participants</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="predNav(1)" ${_pred.idx === S.participants.length - 1 ? 'disabled style="opacity:.4"' : ''}>Next →</button>
+    </div>
+    <div class="modal-body">
+      ${sessions.map(sess => `
+        <div class="pred-form-section">
+          <div class="pred-form-section-title">${sess.icon} ${sess.label}</div>
+          ${sess.positions.map(pos => {
+            const selDid = buf[sess.key]?.[pos] || null;
+            return `
+              <div class="pred-row">
+                <span class="pred-pos-label">${POS_LABEL[pos]}</span>
+                <span class="pred-pts-label" style="color:var(--muted)">${sess.pts[pos] || 0}pts</span>
+                <select class="fs" id="pred-${sess.key}-${pos}" style="flex:1"
+                        onchange="updatePredBuf('${sess.key}','${pos}',this.value)"
+                        ${locked ? 'disabled' : ''}>
+                  ${driverOptions(selDid)}
+                </select>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `).join('')}
+      <!-- Bonus Predictions -->
+      <div class="pred-form-section">
+        <div class="pred-form-section-title">⭐ Bonus Predictions</div>
+        <div class="pred-row">
+          <span class="pred-pos-label" style="width:auto;font-size:11px;color:var(--muted2);min-width:110px">Fastest Lap</span>
+          <span class="pred-pts-label" style="color:var(--muted)">${S.scoring.bonus?.fastestLap || 0}pts</span>
+          <select class="fs" id="pred-bonus-fastestLap" style="flex:1"
+                  onchange="updatePredBuf('bonus','fastestLap',this.value)"
+                  ${locked ? 'disabled' : ''}>
+            ${driverOptions(buf.bonus?.fastestLap || null)}
+          </select>
+        </div>
+        <div class="pred-row">
+          <span class="pred-pos-label" style="width:auto;font-size:11px;color:var(--muted2);min-width:110px">${esc(driverById(S.bonusDriverId)?.name || 'Driver')} Pos</span>
+          <span class="pred-pts-label" style="color:var(--muted)">−1pt/pos</span>
+          <input type="number" class="fi" id="pred-bonus-driverPlace" min="1" max="22"
+                 placeholder="1–22" style="flex:1"
+                 value="${buf.bonus?.driverPlace != null ? buf.bonus.driverPlace : ''}"
+                 onchange="updatePredBuf('bonus','driverPlace',this.value)"
+                 ${locked ? 'disabled' : ''}>
+        </div>
+        <div class="pred-row">
+          <span class="pred-pos-label" style="width:auto;font-size:11px;color:var(--muted2);min-width:110px">Driver of Day</span>
+          <span class="pred-pts-label" style="color:var(--muted)">${S.scoring.bonus?.dotd || 0}pts</span>
+          <select class="fs" id="pred-bonus-dotd" style="flex:1"
+                  onchange="updatePredBuf('bonus','dotd',this.value)"
+                  ${locked ? 'disabled' : ''}>
+            ${driverOptions(buf.bonus?.dotd || null)}
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <div style="font-size:12px;color:var(--muted)">
+        ${locked ? '🔒 Predictions locked — view only' : 'Navigate to enter predictions for each participant'}
+      </div>
+      <div class="modal-foot-right">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        ${!locked ? `<button class="btn btn-primary" onclick="saveAllPreds()">💾 Save All</button>` : ''}
+      </div>
+    </div>
+  `);
+}
+
+function updatePredBuf(session, pos, val) {
+  const p = S.participants[_pred.idx];
+  if (!_pred.buf[p.id]) _pred.buf[p.id] = { race:{}, quali:{}, sprintquali:{}, sprint:{}, bonus:{} };
+  _pred.buf[p.id][session][pos] = val ? +val : null;
+}
+
+function collectCurrentForm() {
+  const race = raceById(_pred.raceId);
+  const p    = S.participants[_pred.idx];
+  if (!p) return;
+
+  const sessions = [
+    { key: 'race',        positions: RACE_POS   },
+    { key: 'quali',       positions: PODIUM_POS },
+    ...(race.sprint ? [
+      { key: 'sprintquali', positions: PODIUM_POS },
+      { key: 'sprint',      positions: PODIUM_POS },
+    ] : []),
+  ];
+
+  const buf = { race:{}, quali:{}, sprintquali:{}, sprint:{}, bonus:{} };
+  for (const { key, positions } of sessions) {
+    for (const pos of positions) {
+      const el = document.getElementById(`pred-${key}-${pos}`);
+      buf[key][pos] = el?.value ? +el.value : null;
+    }
+  }
+  // Bonus
+  const flEl  = document.getElementById('pred-bonus-fastestLap');
+  const dpEl  = document.getElementById('pred-bonus-driverPlace');
+  const dotdEl= document.getElementById('pred-bonus-dotd');
+  buf.bonus = {
+    fastestLap:  flEl?.value   ? +flEl.value   : null,
+    driverPlace: dpEl?.value   ? +dpEl.value   : null,
+    dotd:        dotdEl?.value ? +dotdEl.value : null,
+  };
+  _pred.buf[p.id] = buf;
+}
+
+function predNav(dir) {
+  collectCurrentForm();
+  const newIdx = _pred.idx + dir;
+  if (newIdx < 0 || newIdx >= S.participants.length) return;
+  _pred.idx = newIdx;
+  renderPredModal();
+}
+
+function saveAllPreds() {
+  collectCurrentForm();
+
+  // Validate: no duplicate drivers within same session for same participant
+  for (const p of S.participants) {
+    const buf = _pred.buf[p.id];
+    if (!buf) continue;
+    const race = raceById(_pred.raceId);
+    const sessionsToCheck = [
+      { key:'race',        positions:RACE_POS   },
+      { key:'quali',       positions:PODIUM_POS },
+      ...(race.sprint ? [
+        { key:'sprintquali', positions:PODIUM_POS },
+        { key:'sprint',      positions:PODIUM_POS },
+      ] : []),
+    ];
+    for (const { key, positions } of sessionsToCheck) {
+      const vals = positions.map(pos => buf[key]?.[pos]).filter(Boolean);
+      if (new Set(vals).size !== vals.length) {
+        toast(`${p.name}: duplicate driver in ${key} predictions`, 'err'); return;
+      }
+    }
+  }
+
+  // Commit to state
+  if (!S.predictions[_pred.raceId]) S.predictions[_pred.raceId] = {};
+  S.participants.forEach(p => {
+    S.predictions[_pred.raceId][p.id] = _pred.buf[p.id] || { race:{}, quali:{}, sprintquali:{}, sprint:{}, bonus:{} };
+  });
+
+  save(); closeModal();
+  toast('Predictions saved!');
+  reRenderActive();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODAL: ENTER / EDIT RESULTS
+// ═══════════════════════════════════════════════════════════════════
+
+function openResultsModal(raceId) {
+  const race = raceById(raceId);
+  const existing = S.results[raceId] || {};
+
+  const sessions = [
+    { key: 'race',        label: 'Race Result',          positions: RACE_POS,   icon: '🏁', desc: 'Top 5 finishers'    },
+    { key: 'quali',       label: 'Qualifying Result',    positions: PODIUM_POS, icon: '🕐', desc: 'Top 3 qualifiers'   },
+    ...(race.sprint ? [
+      { key: 'sprintquali', label: 'Sprint Quali Result', positions: PODIUM_POS, icon: '🔫', desc: 'Sprint shootout P1–P3' },
+      { key: 'sprint',      label: 'Sprint Race Result',  positions: PODIUM_POS, icon: '⚡', desc: 'Sprint top 3'          },
+    ] : []),
+  ];
+
+  openModal(`
+    <div class="modal-hdr">
+      <div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">
+          Round ${race.id}${race.sprint ? ' · Sprint Weekend' : ''}
+        </div>
+        <div class="modal-title">${esc(race.name)}</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg" style="margin-bottom:18px">
+        <label class="fl">Race</label>
+        <select class="fs" onchange="openResultsModal(+this.value)">
+          ${RACES.map(r => `<option value="${r.id}" ${r.id===raceId?'selected':''}>Round ${r.id}: ${r.name}</option>`).join('')}
+        </select>
+      </div>
+
+      ${sessions.map(sess => `
+        <div class="pred-form-section">
+          <div class="pred-form-section-title">${sess.icon} ${sess.label} <span style="color:var(--muted);font-weight:400;font-size:10px;text-transform:none;letter-spacing:0">${sess.desc}</span></div>
+          ${sess.positions.map(pos => {
+            const selDid = existing[sess.key]?.[pos] || null;
+            return `<div class="pred-row">
+              <span class="pred-pos-label">${POS_LABEL[pos]}</span>
+              <select class="fs" id="res-${sess.key}-${pos}" style="flex:1">
+                ${driverOptions(selDid)}
+              </select>
+            </div>`;
+          }).join('')}
+        </div>
+      `).join('')}
+      <!-- Bonus Results -->
+      <div class="pred-form-section">
+        <div class="pred-form-section-title">⭐ Bonus Results</div>
+        <div class="pred-row">
+          <span class="pred-pos-label" style="width:auto;font-size:11px;color:var(--muted2);min-width:110px">Fastest Lap</span>
+          <select class="fs" id="res-bonus-fastestLap" style="flex:1">
+            ${driverOptions(existing.bonus?.fastestLap || null)}
+          </select>
+        </div>
+        <div class="pred-row">
+          <span class="pred-pos-label" style="width:auto;font-size:11px;color:var(--muted2);min-width:110px">${esc(driverById(S.bonusDriverId)?.name || 'Driver')} Pos</span>
+          <input type="number" class="fi" id="res-bonus-driverPlace" min="1" max="22"
+                 placeholder="1–22" style="flex:1"
+                 value="${existing.bonus?.driverPlace != null ? existing.bonus.driverPlace : ''}">
+        </div>
+        <div class="pred-row">
+          <span class="pred-pos-label" style="width:auto;font-size:11px;color:var(--muted2);min-width:110px">Driver of Day</span>
+          <select class="fs" id="res-bonus-dotd" style="flex:1">
+            ${driverOptions(existing.bonus?.dotd || null)}
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <div>
+        ${Object.keys(existing).length > 0
+          ? `<button class="btn btn-danger" onclick="deleteResults(${raceId})">Clear Results</button>`
+          : ''}
+      </div>
+      <div class="modal-foot-right">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveResults(${raceId})">Save Results</button>
+      </div>
+    </div>
+  `);
+}
+
+function saveResults(raceId) {
+  const race = raceById(raceId);
+  const sessions = [
+    { key: 'race',        positions: RACE_POS   },
+    { key: 'quali',       positions: PODIUM_POS },
+    ...(race.sprint ? [
+      { key: 'sprintquali', positions: PODIUM_POS },
+      { key: 'sprint',      positions: PODIUM_POS },
+    ] : []),
+  ];
+
+  const results = {};
+  let hasAny = false;
+  let dupErr = null;
+
+  for (const { key, positions } of sessions) {
+    results[key] = {};
+    const seen = {};
+    for (const pos of positions) {
+      const el  = document.getElementById(`res-${key}-${pos}`);
+      const val = el?.value ? +el.value : null;
+      if (val) {
+        hasAny = true;
+        if (seen[val] && !dupErr) {
+          dupErr = `Duplicate driver in ${key.toUpperCase()}: ${driverById(val).abbr} appears twice`;
+        }
+        seen[val] = pos;
+      }
+      results[key][pos] = val;
+    }
+  }
+
+  if (dupErr)   { toast(dupErr, 'err'); return; }
+  if (!hasAny)  { toast('Enter at least one result', 'err'); return; }
+
+  // Bonus results
+  const flEl   = document.getElementById('res-bonus-fastestLap');
+  const dpEl   = document.getElementById('res-bonus-driverPlace');
+  const dotdEl = document.getElementById('res-bonus-dotd');
+  results.bonus = {
+    fastestLap:  flEl?.value   ? +flEl.value   : null,
+    driverPlace: dpEl?.value   ? +dpEl.value   : null,
+    dotd:        dotdEl?.value ? +dotdEl.value : null,
+  };
+
+  S.results[raceId] = results;
+  save(); closeModal();
+  toast(`Results saved for ${race.name}!`);
+  reRenderActive();
+}
+
+function deleteResults(raceId) {
+  if (!confirm('Clear all results for this race?')) return;
+  delete S.results[raceId];
+  save(); closeModal();
+  toast('Results cleared');
+  reRenderActive();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LOCK / UNLOCK PREDICTIONS
+// ═══════════════════════════════════════════════════════════════════
+
+function toggleLock(raceId) {
+  S.locked[raceId] = !S.locked[raceId];
+  save();
+  toast(S.locked[raceId] ? '🔒 Predictions locked' : '🔓 Predictions unlocked');
+  renderPredictions(raceId);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODAL: SETTINGS
+// ═══════════════════════════════════════════════════════════════════
+
+function openSettings() {
+  openModal(`
+    <div class="modal-hdr">
+      <div class="modal-title">⚙ Settings</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label class="fl">League Name</label>
+        <input class="fi" id="s-name" type="text" value="${esc(S.leagueName)}" maxlength="50">
+      </div>
+
+      <div class="sep"></div>
+
+      <div style="margin-bottom:12px">
+        <div class="card-title">Scoring Rules</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+          Points awarded for each <strong style="color:var(--text)">correct prediction</strong>.
+          Set to 0 to disable a position.
+        </p>
+        <div class="scoring-grid">
+          <div class="scoring-section">
+            <div class="scoring-section-title">🏁 Race (P1–P5)</div>
+            ${RACE_POS.map(pos => `
+              <div class="scoring-row">
+                <label>${POS_LABEL[pos]}</label>
+                <input type="number" class="scoring-input" id="sc-race-${pos}"
+                       value="${S.scoring.race[pos]}" min="0" max="999">
+              </div>
+            `).join('')}
+            <div class="scoring-row">
+              <label style="color:var(--gold)">Top-5 ~</label>
+              <input type="number" class="scoring-input" id="sc-race-topN"
+                     value="${S.scoring.race.topN ?? 5}" min="0" max="999">
+            </div>
+          </div>
+          <div class="scoring-section">
+            <div class="scoring-section-title">🕐 Qualifying (P1–P3)</div>
+            ${PODIUM_POS.map(pos => `
+              <div class="scoring-row">
+                <label>${POS_LABEL[pos]}</label>
+                <input type="number" class="scoring-input" id="sc-quali-${pos}"
+                       value="${S.scoring.quali[pos]}" min="0" max="999">
+              </div>
+            `).join('')}
+          </div>
+          <div class="scoring-section">
+            <div class="scoring-section-title">⚡ Sprint (P1–P3)</div>
+            ${PODIUM_POS.map(pos => `
+              <div class="scoring-row">
+                <label>${POS_LABEL[pos]}</label>
+                <input type="number" class="scoring-input" id="sc-sprint-${pos}"
+                       value="${S.scoring.sprint[pos]}" min="0" max="999">
+              </div>
+            `).join('')}
+            <div class="scoring-row">
+              <label style="color:var(--gold)">Top-3 ~</label>
+              <input type="number" class="scoring-input" id="sc-sprint-topN"
+                     value="${S.scoring.sprint.topN ?? 3}" min="0" max="999">
+            </div>
+          </div>
+          <div class="scoring-section">
+            <div class="scoring-section-title">🔫 Sprint Quali (P1–P3)</div>
+            ${PODIUM_POS.map(pos => `
+              <div class="scoring-row">
+                <label>${POS_LABEL[pos]}</label>
+                <input type="number" class="scoring-input" id="sc-sprintquali-${pos}"
+                       value="${S.scoring.sprintquali[pos]}" min="0" max="999">
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div style="margin-bottom:12px">
+        <div class="card-title">Bonus Predictions</div>
+        <div class="fg">
+          <label class="fl">Specific Driver (for "Where will X finish?")</label>
+          <select class="fs" id="s-bonus-driver">
+            ${driverOptions(S.bonusDriverId)}
+          </select>
+        </div>
+        <div class="scoring-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="scoring-section">
+            <div class="scoring-section-title">⚡ Fastest Lap</div>
+            <div class="scoring-row"><label>Correct</label>
+              <input type="number" class="scoring-input" id="sc-bonus-fastestLap"
+                     value="${S.scoring.bonus?.fastestLap || 0}" min="0" max="999">
+            </div>
+          </div>
+          <div class="scoring-section">
+            <div class="scoring-section-title">📍 Driver Finish</div>
+            <div class="scoring-row"><label>Penalty/pos</label>
+              <input type="number" class="scoring-input" id="sc-bonus-driverPlace"
+                     value="${S.scoring.bonus?.driverPlace || 1}" min="0" max="999">
+            </div>
+            <div style="font-size:10px;color:var(--muted);padding:4px 0 0 0">Pts lost per position off (0 = exact)</div>
+          </div>
+          <div class="scoring-section">
+            <div class="scoring-section-title">⭐ Driver of Day</div>
+            <div class="scoring-row"><label>Correct</label>
+              <input type="number" class="scoring-input" id="sc-bonus-dotd"
+                     value="${S.scoring.bonus?.dotd || 0}" min="0" max="999">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div>
+        <div class="card-title" style="margin-bottom:10px">Data Management</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <button class="btn btn-ghost btn-sm" onclick="exportData()">⬇ Export JSON</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('imp').click()">⬆ Import JSON</button>
+          <input type="file" id="imp" accept=".json" style="display:none" onchange="importData(this)">
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="resetAll()">⚠ Reset All Data</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <div></div>
+      <div class="modal-foot-right">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+      </div>
+    </div>
+  `);
+}
+
+function saveSettings() {
+  const name = document.getElementById('s-name').value.trim();
+  if (!name) { toast('League name cannot be empty', 'err'); return; }
+
+  S.leagueName = name;
+
+  const readScore = (session, positions) => {
+    positions.forEach(pos => {
+      const el = document.getElementById(`sc-${session}-${pos}`);
+      if (el) S.scoring[session][pos] = Math.max(0, +el.value || 0);
+    });
+  };
+  readScore('race',        RACE_POS);
+  readScore('quali',       PODIUM_POS);
+  readScore('sprint',      PODIUM_POS);
+  readScore('sprintquali', PODIUM_POS);
+
+  // Top-N bonus inputs
+  ['race', 'sprint'].forEach(key => {
+    const el = document.getElementById(`sc-${key}-topN`);
+    if (el) S.scoring[key].topN = Math.max(0, +el.value || 0);
+  });
+
+  // Bonus driver + scoring
+  const bd = document.getElementById('s-bonus-driver');
+  if (bd?.value) S.bonusDriverId = +bd.value;
+  if (!S.scoring.bonus) S.scoring.bonus = {};
+  ['fastestLap','driverPlace','dotd'].forEach(k => {
+    const el = document.getElementById(`sc-bonus-${k}`);
+    if (el) S.scoring.bonus[k] = Math.max(0, +el.value || 0);
+  });
+
+  save();
+  document.getElementById('hdr-name').textContent = S.leagueName;
+  closeModal();
+  toast('Settings saved');
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'f1-fantasy-2025.json'; a.click();
+  URL.revokeObjectURL(url);
+  toast('Data exported');
+}
+
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      Object.assign(S, data);
+      save(); closeModal();
+      document.getElementById('hdr-name').textContent = S.leagueName;
+      renderTab('dashboard');
+      toast('Data imported successfully');
+    } catch(_) { toast('Invalid JSON file', 'err'); }
+  };
+  reader.readAsText(file);
+}
+
+function resetAll() {
+  if (!confirm('Reset ALL data? Participants, predictions, and results will be permanently deleted.')) return;
+  S = Object.assign({}, DEFAULTS, { participants:[], predictions:{}, results:{}, locked:{} });
+  save(); closeModal();
+  document.getElementById('hdr-name').textContent = S.leagueName;
+  switchTab('dashboard');
+  toast('All data reset');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
+
+document.getElementById('hdr-name').textContent = S.leagueName;
+renderDashboard();
+initFirebase();
+</script>
+</body>
+</html>
