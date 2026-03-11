@@ -97,13 +97,13 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
               position:relative; overflow:visible; }
 .anim-fill  { height:100%; width:0; border-radius:6px; position:relative;
               background:var(--clr);
-              animation: growBar 1.4s cubic-bezier(.15,.8,.3,1) forwards; }
+              animation: growBar 7s cubic-bezier(.15,.8,.3,1) forwards; }
 .anim-fill::after { content:''; position:absolute; inset:0; border-radius:6px;
                     background:linear-gradient(to right,rgba(0,0,0,.35),transparent); }
 .anim-car-wrap { position:absolute; right:-62px; top:50%; transform:translateY(-50%);
                  pointer-events:none; z-index:2; }
 .anim-pts { min-width:60px; font-size:13px; font-weight:700; text-align:left;
-            opacity:0; animation: fadeInPts .3s ease forwards; }
+            opacity:0; animation: fadeInPts 1.5s ease forwards; }
 
 /* ── SESSION HEADER ── */
 .session-hdr {
@@ -312,8 +312,6 @@ const FIREBASE_CONFIG = {
 };
 const FIREBASE_PATH = 'ffia26'; // key under which all data is stored
 </script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
 <script>
 // ═══════════════════════════════════════════════════════════════════
@@ -553,13 +551,14 @@ function calcRacePts(pid, raceId) {
   if (!res || !pred) return 0;
 
   let pts = 0;
-  const sessions = [
-    { key: 'race',        positions: RACE_POS   },
+  const sessions = race.sprint ? [
+    { key: 'sprintquali', positions: PODIUM_POS },
+    { key: 'sprint',      positions: PODIUM_POS },
     { key: 'quali',       positions: PODIUM_POS },
-    ...(race.sprint ? [
-      { key: 'sprintquali', positions: PODIUM_POS },
-      { key: 'sprint',      positions: PODIUM_POS },
-    ] : []),
+    { key: 'race',        positions: RACE_POS   },
+  ] : [
+    { key: 'quali',       positions: PODIUM_POS },
+    { key: 'race',        positions: RACE_POS   },
   ];
 
   for (const { key, positions } of sessions) {
@@ -604,16 +603,17 @@ function predStats(pid, raceId) {
   const race = raceById(raceId);
   const res  = S.results[raceId];
   const pred = S.predictions[raceId]?.[pid];
-  if (!pred) return { made: 0, correct: 0, possible: 0 };
-
-  const sessions = [
-    { key: 'race',        positions: RACE_POS   },
+  const sessions = race.sprint ? [
+    { key: 'sprintquali', positions: PODIUM_POS },
+    { key: 'sprint',      positions: PODIUM_POS },
     { key: 'quali',       positions: PODIUM_POS },
-    ...(race.sprint ? [
-      { key: 'sprintquali', positions: PODIUM_POS },
-      { key: 'sprint',      positions: PODIUM_POS },
-    ] : []),
+    { key: 'race',        positions: RACE_POS   },
+  ] : [
+    { key: 'quali',       positions: PODIUM_POS },
+    { key: 'race',        positions: RACE_POS   },
   ];
+
+  if (!pred) return { made: 0, correct: 0, possible: 0 };
 
   let made = 0, correct = 0, possible = 0;
   for (const { key, positions } of sessions) {
@@ -757,7 +757,7 @@ function renderBarChart(mode, lb) {
   const data = lb.map(p => ({
     ...p,
     pts: mode === 'race' ? calcRacePts(p.id, _animRaceId) : p.total
-  })).sort((a, b) => b.pts - a.pts);
+  })).sort((a, b) => a.name.localeCompare(b.name));
 
   const maxAbs = Math.max(...data.map(d => Math.abs(d.pts)), 1);
 
@@ -765,8 +765,8 @@ function renderBarChart(mode, lb) {
     ${data.map((p, i) => {
       const color   = pColor(p);
       const pct     = (Math.max(0, p.pts) / maxAbs * 100).toFixed(1);
-      const delay   = (i * 0.13).toFixed(2);
-      const ptsDelay = (i * 0.13 + 1.2).toFixed(2);
+      const delay     = (i * 0.65).toFixed(2);
+      const ptsDelay  = (i * 0.65 + 6).toFixed(2);
       const ptsColor = p.pts < 0 ? '#ff7070' : p.pts === 0 ? 'var(--muted)' : color;
       return `
         <div class="anim-row">
@@ -1183,13 +1183,14 @@ function renderParticipantCards(raceId) {
   const locked = !!S.locked[raceId];
 
   // Work out how many positions are preditable per participant
-  const sessions = [
-    { key: 'race',  positions: RACE_POS   },
-    { key: 'quali', positions: PODIUM_POS },
-    ...(race.sprint ? [
-      { key: 'sprintquali', positions: PODIUM_POS },
-      { key: 'sprint',      positions: PODIUM_POS },
-    ] : []),
+  const sessions = race.sprint ? [
+    { key: 'sprintquali', positions: PODIUM_POS },
+    { key: 'sprint',      positions: PODIUM_POS },
+    { key: 'quali',       positions: PODIUM_POS },
+    { key: 'race',        positions: RACE_POS   },
+  ] : [
+    { key: 'quali',       positions: PODIUM_POS },
+    { key: 'race',        positions: RACE_POS   },
   ];
   const totalSlots = sessions.reduce((s, sess) => s + sess.positions.length, 0);
 
@@ -1221,13 +1222,14 @@ function renderPredTable(raceId) {
   const res  = S.results[raceId];
   const lb   = leaderboard(); // sorted participants
 
-  const sessions = [
-    { key: 'race',        label: 'Race Predictions',             positions: RACE_POS,   icon: '🏁' },
-    { key: 'quali',       label: 'Qualifying Predictions',       positions: PODIUM_POS, icon: '🕐' },
-    ...(race.sprint ? [
-      { key: 'sprintquali', label: 'Sprint Quali Predictions',  positions: PODIUM_POS, icon: '🔫' },
-      { key: 'sprint',      label: 'Sprint Race Predictions',   positions: PODIUM_POS, icon: '⚡' },
-    ] : []),
+  const sessions = race.sprint ? [
+    { key: 'sprintquali', label: 'Sprint Quali Predictions',  positions: PODIUM_POS, icon: '🕐' },
+    { key: 'sprint',      label: 'Sprint Race Predictions',   positions: PODIUM_POS, icon: '🏁' },
+    { key: 'quali',       label: 'Qualifying Predictions',    positions: PODIUM_POS, icon: '🕐' },
+    { key: 'race',        label: 'Race Predictions',          positions: RACE_POS,   icon: '🏁' },
+  ] : [
+    { key: 'quali',       label: 'Qualifying Predictions',    positions: PODIUM_POS, icon: '🕐' },
+    { key: 'race',        label: 'Race Predictions',          positions: RACE_POS,   icon: '🏁' },
   ];
 
   const getPred = (pid, session, pos) => S.predictions[raceId]?.[pid]?.[session]?.[pos] || null;
@@ -1317,31 +1319,31 @@ function renderPredTable(raceId) {
             <strong style="color:var(--red)">${POS_LABEL[pos]}</strong>
             <span style="font-size:10px;color:var(--muted);margin-left:5px">(${pts}pts)</span>
           </td>
-          ${lb.map(p => cellHtml(p.id, sess.key, pos, topNSet)).join('')}
           <td class="pc pc-res">
             ${rDrv
               ? `<span style="display:inline-flex;align-items:center;gap:3px"><span class="dot" style="background:${tc(rDrv.team)}"></span>${rDrv.abbr}</span>`
               : `<span style="color:var(--muted)">—</span>`}
           </td>
+          ${lb.map(p => cellHtml(p.id, sess.key, pos, topNSet)).join('')}
         </tr>`;
       }).join('') +
       (res?.[sess.key] ? `
         <tr style="background:rgba(255,255,255,.02)">
           <td style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding-left:16px">Position Pts</td>
+          <td></td>
           ${lb.map(p => {
             const pts = exactPts(p.id);
             return `<td class="pc pc-pts" style="text-align:center;color:${pts > 0 ? 'var(--green)' : 'var(--muted)'}">${pts}</td>`;
           }).join('')}
-          <td></td>
         </tr>
         ${topNPts ? `
         <tr style="background:rgba(255,165,0,.04)">
           <td style="font-size:10px;font-weight:700;color:#ffaa00;text-transform:uppercase;letter-spacing:.5px;padding-left:16px">Top-${sess.positions.length} ~ Bonus <span style="font-size:9px;color:var(--muted)">(${topNPts}pts each)</span></td>
+          <td></td>
           ${lb.map(p => {
             const pts = topNBonus(p.id);
             return `<td class="pc pc-pts" style="text-align:center;color:${pts > 0 ? '#ffaa00' : 'var(--muted)'}">${pts}</td>`;
           }).join('')}
-          <td></td>
         </tr>
         ` : ''}
       ` : '');
@@ -1351,14 +1353,15 @@ function renderPredTable(raceId) {
   const bonusRows = secHdr('⭐', 'Bonus Predictions', bonusMaxPts) + `
     <tr>
       <td><strong style="color:var(--red)">Fastest Lap</strong> <span style="font-size:10px;color:var(--muted);margin-left:5px">(${S.scoring.bonus?.fastestLap || 0}pts)</span></td>
-      ${lb.map(p => bonusDriverCell(p.id, 'fastestLap')).join('')}
       ${resDrvCell('fastestLap')}
+      ${lb.map(p => bonusDriverCell(p.id, 'fastestLap')).join('')}
     </tr>
     <tr>
       <td>
         <strong style="color:var(--red)">${bonusDrv ? esc(bonusDrv.name) : 'Driver'} Finishes</strong>
         <span style="font-size:10px;color:var(--muted);margin-left:5px">(−1pt/pos off)</span>
       </td>
+      <td class="pc pc-res">${res?.bonus?.driverPlace != null ? `P${res.bonus.driverPlace}` : '<span style="color:var(--muted)">—</span>'}</td>
       ${lb.map(p => {
         const pPos = S.predictions[raceId]?.[p.id]?.bonus?.driverPlace;
         const rPos = res?.bonus?.driverPlace;
@@ -1370,16 +1373,16 @@ function renderPredTable(raceId) {
         const label = diff === 0 ? `P${pPos} ✓` : `P${pPos} (${penalty})`;
         return `<td class="${cls}">${label}</td>`;
       }).join('')}
-      <td class="pc pc-res">${res?.bonus?.driverPlace != null ? `P${res.bonus.driverPlace}` : '<span style="color:var(--muted)">—</span>'}</td>
     </tr>
     <tr>
       <td><strong style="color:var(--red)">Driver of the Day</strong> <span style="font-size:10px;color:var(--muted);margin-left:5px">(${S.scoring.bonus?.dotd || 0}pts)</span></td>
-      ${lb.map(p => bonusDriverCell(p.id, 'dotd')).join('')}
       ${resDrvCell('dotd')}
+      ${lb.map(p => bonusDriverCell(p.id, 'dotd')).join('')}
     </tr>
     ${res?.bonus ? `
       <tr>
         <td style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Points</td>
+        <td></td>
         ${lb.map(p => {
           const pb = S.predictions[raceId]?.[p.id]?.bonus || {};
           const rb = res.bonus;
@@ -1389,7 +1392,6 @@ function renderPredTable(raceId) {
           if (pb.dotd        && rb.dotd        && pb.dotd        === rb.dotd)        bpts += S.scoring.bonus?.dotd        || 0;
           return `<td class="pc pc-pts" style="text-align:center;color:${bpts>0?'var(--green)':bpts<0?'#ff7070':'var(--muted)'}">${bpts}</td>`;
         }).join('')}
-        <td></td>
       </tr>
     ` : ''}
   `;
@@ -1400,8 +1402,8 @@ function renderPredTable(raceId) {
         <table>
           <thead><tr>
             <th>Prediction</th>
-            ${lb.map(p => `<th style="text-align:center;min-width:80px">${esc(p.name)}</th>`).join('')}
             <th style="text-align:center;min-width:90px;color:var(--gold)">★ Result</th>
+            ${lb.map(p => `<th style="text-align:center;min-width:80px">${esc(p.name)}</th>`).join('')}
           </tr></thead>
           <tbody>
             ${sessionRows}
@@ -1582,8 +1584,8 @@ function buildResultsDisplay(raceId) {
     { key: 'race',        label: 'Race Result',          positions: RACE_POS,   icon: '🏁' },
     { key: 'quali',       label: 'Qualifying Result',    positions: PODIUM_POS, icon: '🕐' },
     ...(race.sprint ? [
-      { key: 'sprintquali', label: 'Sprint Quali Result', positions: PODIUM_POS, icon: '🔫' },
-      { key: 'sprint',      label: 'Sprint Race Result',  positions: PODIUM_POS, icon: '⚡' },
+      { key: 'sprintquali', label: 'Sprint Quali Result', positions: PODIUM_POS, icon: '🕐' },
+      { key: 'sprint',      label: 'Sprint Race Result',  positions: PODIUM_POS, icon: '🏁' },
     ] : []),
   ];
 
@@ -1793,13 +1795,14 @@ function renderPredModal() {
   const buf  = _pred.buf[p.id];
   const locked = !!S.locked[_pred.raceId];
 
-  const sessions = [
-    { key: 'race',        label: 'Race',         positions: RACE_POS,   icon: '🏁', pts: S.scoring.race        },
+  const sessions = race.sprint ? [
+    { key: 'sprintquali', label: 'Sprint Quali', positions: PODIUM_POS, icon: '🕐', pts: S.scoring.sprintquali },
+    { key: 'sprint',      label: 'Sprint Race',  positions: PODIUM_POS, icon: '🏁', pts: S.scoring.sprint      },
     { key: 'quali',       label: 'Qualifying',   positions: PODIUM_POS, icon: '🕐', pts: S.scoring.quali       },
-    ...(race.sprint ? [
-      { key: 'sprintquali', label: 'Sprint Quali', positions: PODIUM_POS, icon: '🔫', pts: S.scoring.sprintquali },
-      { key: 'sprint',      label: 'Sprint Race',  positions: PODIUM_POS, icon: '⚡', pts: S.scoring.sprint      },
-    ] : []),
+    { key: 'race',        label: 'Race',         positions: RACE_POS,   icon: '🏁', pts: S.scoring.race        },
+  ] : [
+    { key: 'quali',       label: 'Qualifying',   positions: PODIUM_POS, icon: '🕐', pts: S.scoring.quali       },
+    { key: 'race',        label: 'Race',         positions: RACE_POS,   icon: '🏁', pts: S.scoring.race        },
   ];
 
   const totalMaxPts = sessions.reduce((s, sess) =>
@@ -1897,13 +1900,14 @@ function collectCurrentForm() {
   const p    = S.participants[_pred.idx];
   if (!p) return;
 
-  const sessions = [
-    { key: 'race',        positions: RACE_POS   },
+  const sessions = race.sprint ? [
+    { key: 'sprintquali', positions: PODIUM_POS },
+    { key: 'sprint',      positions: PODIUM_POS },
     { key: 'quali',       positions: PODIUM_POS },
-    ...(race.sprint ? [
-      { key: 'sprintquali', positions: PODIUM_POS },
-      { key: 'sprint',      positions: PODIUM_POS },
-    ] : []),
+    { key: 'race',        positions: RACE_POS   },
+  ] : [
+    { key: 'quali',       positions: PODIUM_POS },
+    { key: 'race',        positions: RACE_POS   },
   ];
 
   const buf = { race:{}, quali:{}, sprintquali:{}, sprint:{}, bonus:{} };
@@ -1980,8 +1984,8 @@ function openResultsModal(raceId) {
     { key: 'race',        label: 'Race Result',          positions: RACE_POS,   icon: '🏁', desc: 'Top 5 finishers'    },
     { key: 'quali',       label: 'Qualifying Result',    positions: PODIUM_POS, icon: '🕐', desc: 'Top 3 qualifiers'   },
     ...(race.sprint ? [
-      { key: 'sprintquali', label: 'Sprint Quali Result', positions: PODIUM_POS, icon: '🔫', desc: 'Sprint shootout P1–P3' },
-      { key: 'sprint',      label: 'Sprint Race Result',  positions: PODIUM_POS, icon: '⚡', desc: 'Sprint top 3'          },
+      { key: 'sprintquali', label: 'Sprint Quali Result', positions: PODIUM_POS, icon: '🕐', desc: 'Sprint shootout P1–P3' },
+      { key: 'sprint',      label: 'Sprint Race Result',  positions: PODIUM_POS, icon: '🏁', desc: 'Sprint top 3'          },
     ] : []),
   ];
 
@@ -2056,13 +2060,14 @@ function openResultsModal(raceId) {
 
 function saveResults(raceId) {
   const race = raceById(raceId);
-  const sessions = [
-    { key: 'race',        positions: RACE_POS   },
+  const sessions = race.sprint ? [
+    { key: 'sprintquali', positions: PODIUM_POS },
+    { key: 'sprint',      positions: PODIUM_POS },
     { key: 'quali',       positions: PODIUM_POS },
-    ...(race.sprint ? [
-      { key: 'sprintquali', positions: PODIUM_POS },
-      { key: 'sprint',      positions: PODIUM_POS },
-    ] : []),
+    { key: 'race',        positions: RACE_POS   },
+  ] : [
+    { key: 'quali',       positions: PODIUM_POS },
+    { key: 'race',        positions: RACE_POS   },
   ];
 
   const results = {};
@@ -2339,7 +2344,11 @@ function resetAll() {
 
 document.getElementById('hdr-name').textContent = S.leagueName;
 renderDashboard();
-initFirebase();
 </script>
+
+<!-- Firebase SDK loads AFTER the app — so it never blocks the page -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script>initFirebase();</script>
 </body>
 </html>
