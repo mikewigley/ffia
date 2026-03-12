@@ -397,6 +397,18 @@ body.light ::-webkit-scrollbar-thumb { background: #ccc; }
 @keyframes overtakeFlash { 0%,100%{filter:brightness(1)} 50%{filter:brightness(2.5) drop-shadow(0 0 6px gold)} }
 .overtake-flash { animation: overtakeFlash .45s ease 2; }
 
+/* ── IDENTITY OVERLAY ── */
+.identity-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 10000;
+                    display: flex; align-items: center; justify-content: center; padding: 24px; }
+.identity-box { background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+                padding: 32px 28px; max-width: 420px; width: 100%; text-align: center; }
+.identity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+                 gap: 10px; margin: 20px 0; }
+.identity-btn { background: var(--surface2); border: 2px solid var(--border2); border-radius: 10px;
+                padding: 14px 10px; cursor: pointer; font-family: inherit; font-size: 14px;
+                font-weight: 700; color: var(--text); transition: border-color .15s, background .15s; }
+.identity-btn:hover { border-color: var(--red); background: rgba(225,6,0,.07); }
+
 /* ── SPARKLINE ── */
 .sparkline { display: inline-block; vertical-align: middle; margin-left: 6px; opacity: .85; }
 </style>
@@ -415,6 +427,7 @@ body.light ::-webkit-scrollbar-thumb { background: #ccc; }
       </div>
       <button class="btn btn-ghost btn-sm" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
       <span id="sync-status" style="font-size:11px;color:var(--muted);white-space:nowrap"></span>
+      <button class="btn btn-ghost btn-sm" id="identity-btn" onclick="showIdentityPicker()" style="font-size:13px;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis">👤 Who are you?</button>
     </div>
   </header>
 
@@ -2075,25 +2088,16 @@ function renderParticipantCards(raceId) {
     const pLocked = !!S.lockedP?.[raceId]?.[p.id];
     const anyLocked = locked || pLocked;
     return `
-      <div class="pq-card${isDone ? ' pq-done' : ''}" style="padding:0;overflow:hidden">
-        <div style="border-bottom:1px solid var(--border);padding:5px 8px;display:flex;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 8px"
-                  onclick="event.stopPropagation();toggleParticipantLock(${raceId},'${p.id}')">
-            ${pLocked ? '🔓 Unlock' : '🔒 Lock'}
-          </button>
+      <button class="pq-card${isDone ? ' pq-done' : ''}" onclick="openPredictionsModal(${raceId}, '${p.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div class="pq-name" style="margin:0">${esc(p.name)}</div>
+          <span style="font-size:13px">${isDone ? '✅' : filled > 0 ? '⚠️' : '○'}</span>
         </div>
-        <button style="width:100%;background:none;border:none;cursor:pointer;text-align:left;padding:10px 10px 6px;color:inherit;font-family:inherit"
-                onclick="openPredictionsModal(${raceId}, '${p.id}')">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <div class="pq-name" style="margin:0">${esc(p.name)}</div>
-            <span style="font-size:13px">${isDone ? '✅' : filled > 0 ? '⚠️' : '○'}</span>
-          </div>
-          <div class="pq-count">${filled} / ${totalSlots} positions${anyLocked ? ' 🔒' : ' ✏'}</div>
-          <div class="pq-bar-bg">
-            <div class="pq-bar-fill" style="width:${pct}%;background:${barClr}"></div>
-          </div>
-        </button>
-      </div>`;
+        <div class="pq-count">${filled} / ${totalSlots} positions${anyLocked ? ' 🔒' : ' ✏'}</div>
+        <div class="pq-bar-bg">
+          <div class="pq-bar-fill" style="width:${pct}%;background:${barClr}"></div>
+        </div>
+      </button>`;
   }).join('');
 
   return `<div class="pq-grid">${cards}</div>`;
@@ -2703,7 +2707,7 @@ function saveParticipant(pid) {
     S.participants.push({ id: uid(), name, color });
     toast('Participant added!');
   }
-  save(); closeModal(); renderParticipants();
+  save(); closeModal(); renderParticipants(); updateIdentityUI();
 }
 
 function deleteParticipant(pid) {
@@ -2749,7 +2753,8 @@ function renderPredModal() {
   const p    = S.participants[_pred.idx];
   const buf  = _pred.buf[p.id];
   const raceLocked = !!S.locked[_pred.raceId] || isPastDeadline(_pred.raceId);
-  const locked = raceLocked || !!S.lockedP?.[_pred.raceId]?.[p.id];
+  const identityLocked = !isOwnPrediction(p.id);
+  const locked = raceLocked || identityLocked || !!S.lockedP?.[_pred.raceId]?.[p.id];
 
   const sessions = race.sprint ? [
     { key: 'sprintquali', label: 'Sprint Quali', positions: PODIUM_POS, icon: '🕐', pts: S.scoring.sprintquali },
@@ -2772,7 +2777,7 @@ function renderPredModal() {
         <div class="modal-title-sub">Round ${race.id} · ${fmtDate(race.date)} · Max ${totalMaxPts} pts${locked?' · 🔒 Locked':''}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-        ${!raceLocked ? `
+        ${!raceLocked && !identityLocked ? `
           <button class="btn btn-ghost btn-sm" onclick="toggleParticipantLock(${_pred.raceId},'${p.id}');renderPredModal()">
             ${locked ? '🔓 Unlock' : '🔒 Lock'}
           </button>
@@ -2842,7 +2847,7 @@ function renderPredModal() {
     </div>
     <div class="modal-foot">
       <div style="font-size:12px;color:var(--muted)">
-        ${locked ? '🔒 Predictions locked — view only' : '✓ Changes saved automatically'}
+        ${identityLocked ? `🔒 View only — not your predictions` : locked ? '🔒 Predictions locked — view only' : '✓ Changes saved automatically'}
       </div>
       <div class="modal-foot-right">
         <button class="btn btn-ghost" onclick="closeModal();reRenderActive()">Cancel</button>
@@ -3459,11 +3464,85 @@ function resetAll() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// IDENTITY
+// ═══════════════════════════════════════════════════════════════════
+
+const IDENTITY_KEY = 'f1fl26_identity';
+
+function getIdentity() {
+  const id = localStorage.getItem(IDENTITY_KEY);
+  return id ? S.participants.find(p => p.id === id) || null : null;
+}
+
+function setIdentity(pid) {
+  localStorage.setItem(IDENTITY_KEY, pid);
+  updateIdentityUI();
+  document.getElementById('identity-overlay')?.remove();
+  reRenderActive();
+}
+
+function clearIdentity() {
+  localStorage.removeItem(IDENTITY_KEY);
+  updateIdentityUI();
+  reRenderActive();
+}
+
+function updateIdentityUI() {
+  const p = getIdentity();
+  const btn = document.getElementById('identity-btn');
+  if (!btn) return;
+  if (S.participants.length === 0) {
+    btn.textContent = '';
+    btn.style.visibility = 'hidden';
+    return;
+  }
+  btn.style.visibility = '';
+  btn.textContent = p ? `👤 ${p.name}` : '👤 Who are you?';
+  btn.style.color = p ? pColor(p) : '';
+}
+
+function showIdentityPicker(force = false) {
+  document.getElementById('identity-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'identity-overlay';
+  overlay.className = 'identity-overlay';
+  const current = getIdentity();
+  overlay.innerHTML = `
+    <div class="identity-box">
+      <div style="font-size:32px;margin-bottom:8px">👤</div>
+      <div style="font-size:20px;font-weight:800;margin-bottom:6px">Who are you?</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:4px">Select your name to manage your own predictions.</div>
+      <div class="identity-grid">
+        ${S.participants.map(p => `
+          <button class="identity-btn" style="${current?.id===p.id?`border-color:${pColor(p)};background:rgba(255,255,255,.05)`:''}color:${pColor(p)}"
+                  onclick="setIdentity('${p.id}')">
+            ${esc(p.name)}${current?.id===p.id?' ✓':''}
+          </button>`).join('')}
+      </div>
+      ${!force ? `<button class="btn btn-ghost btn-sm" onclick="document.getElementById('identity-overlay').remove()"
+              style="margin-top:4px;font-size:12px">Maybe later</button>` : ''}
+      ${current ? `<button class="btn btn-ghost btn-sm" onclick="clearIdentity();document.getElementById('identity-overlay').remove()"
+              style="margin-top:8px;font-size:12px;color:var(--muted)">Sign out</button>` : ''}
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function isOwnPrediction(pid) {
+  const identity = getIdentity();
+  if (!identity) return true; // no identity set — full access
+  return identity.id === pid;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════════
 
 document.getElementById('hdr-name').textContent = S.leagueName;
 renderDashboard();
+setTimeout(() => {
+  updateIdentityUI();
+  if (S.participants.length > 0 && !getIdentity()) showIdentityPicker();
+}, 100);
 </script>
 
 <!-- Firebase SDK loads AFTER the app — so it never blocks the page -->
