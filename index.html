@@ -29,7 +29,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', syste
 
 /* ── HEADER ── */
 .header { background: #000; border-bottom: 3px solid var(--red); position: sticky; top: 0; z-index: 100; padding-top: env(safe-area-inset-top, 0px); }
-.header-inner { max-width: 1280px; margin: 0 auto; padding: 0 20px; height: 62px; display: flex; align-items: center; justify-content: space-between; }
+.header-inner { max-width: 1280px; margin: 0 auto; padding: 0 20px; min-height: 62px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
 .header-brand { display: flex; align-items: center; gap: 14px; }
 .logo { background: var(--red); color: #fff; font-weight: 900; font-size: 15px; font-style: italic; padding: 4px 10px; border-radius: 4px; letter-spacing: -.5px; }
 .header-title { font-size: 19px; font-weight: 700; letter-spacing: -.3px; }
@@ -350,7 +350,6 @@ body.light ::-webkit-scrollbar-thumb { background: #ccc; }
           <p class="header-sub">2026 Season &mdash; 24 Races &middot; 22 Drivers</p>
         </div>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="openSettings()">⚙ Settings</button>
       <button class="btn btn-ghost btn-sm" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
       <span id="sync-status" style="font-size:11px;color:var(--muted);white-space:nowrap"></span>
     </div>
@@ -363,6 +362,7 @@ body.light ::-webkit-scrollbar-thumb { background: #ccc; }
       <button class="nav-tab"        data-tab="results"      onclick="switchTab('results')">     <span class="ni">🏁</span><span>Results</span>      </button>
       <button class="nav-tab"        data-tab="calendar"     onclick="switchTab('calendar')">    <span class="ni">📅</span><span>Calendar</span>     </button>
       <button class="nav-tab"        data-tab="participants" onclick="switchTab('participants')"><span class="ni">👥</span><span>Participants</span></button>
+      <button class="nav-tab"        data-tab="settings"    onclick="switchTab('settings')">    <span class="ni">⚙️</span><span>Settings</span>    </button>
     </div>
   </nav>
 
@@ -372,6 +372,7 @@ body.light ::-webkit-scrollbar-thumb { background: #ccc; }
     <section class="tab-content"        id="tab-predictions"></section>
     <section class="tab-content"        id="tab-results"></section>
     <section class="tab-content"        id="tab-calendar"></section>
+    <section class="tab-content"        id="tab-settings"></section>
   </main>
 </div>
 
@@ -868,7 +869,7 @@ function closeClipy() {
 function renderTab(tab) {
   ({ dashboard: renderDashboard, participants: renderParticipants,
      predictions: () => renderPredictions(), results: () => renderResults(),
-     calendar: renderCalendar })[tab]?.();
+     calendar: renderCalendar, settings: renderSettings })[tab]?.();
 }
 
 function reRenderActive() {
@@ -1558,9 +1559,9 @@ function renderDashboard() {
           <table>
             <thead><tr>
               <th>Rank</th><th>Participant</th>
+              <th style="text-align:right">Total Points</th>
               <th style="text-align:center">Correct Preds</th>
               <th style="text-align:right">Last Race</th>
-              <th style="text-align:right">Total Points</th>
             </tr></thead>
             <tbody>
               ${lb.map((p, i) => {
@@ -1579,11 +1580,11 @@ function renderDashboard() {
                     <strong>${esc(p.name)}</strong>${trendHtml(p)}${achHtml}
                     ${sparklineSvg(p, completedRaceIds)}
                   </td>
+                  <td style="text-align:right"><strong style="font-size:16px;color:var(--red)">${p.total}</strong></td>
                   <td style="text-align:center">
                     <span style="color:var(--green);font-weight:700">${p.correct}</span>
                   </td>
                   <td style="text-align:right;color:var(--muted2)">${lastPts !== null ? lastPts : '—'}</td>
-                  <td style="text-align:right"><strong style="font-size:16px;color:var(--red)">${p.total}</strong></td>
                 </tr>`;
               }).join('')}
             </tbody>
@@ -2162,6 +2163,14 @@ function renderResults(raceId) {
       <select class="fs" onchange="renderResults(+this.value)">
         ${RACES.map(r => `<option value="${r.id}" ${r.id===_resRaceId?'selected':''}>Round ${r.id}: ${r.name}${S.results[r.id]?' ✓':''}</option>`).join('')}
       </select>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn btn-ghost" style="flex:1;font-size:15px;padding:10px"
+          onclick="renderResults(${_resRaceId - 1})"
+          ${_resRaceId <= 1 ? 'disabled style="opacity:.3;flex:1;font-size:15px;padding:10px"' : ''}>◀ Prev Race</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:15px;padding:10px"
+          onclick="renderResults(${_resRaceId + 1})"
+          ${_resRaceId >= RACES.length ? 'disabled style="opacity:.3;flex:1;font-size:15px;padding:10px"' : ''}>Next Race ▶</button>
+      </div>
     </div>
 
     ${res ? `
@@ -2858,16 +2867,18 @@ function toggleLock(raceId) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MODAL: SETTINGS
+// RENDER: SETTINGS TAB
 // ═══════════════════════════════════════════════════════════════════
 
-function openSettings() {
-  openModal(`
-    <div class="modal-hdr">
-      <div class="modal-title">⚙ Settings</div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+function renderSettings() {
+  const el = document.getElementById('tab-settings');
+  el.innerHTML = `
+    <div class="sec-hdr">
+      <h2 class="sec-title">Settings</h2>
     </div>
-    <div class="modal-body">
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">League</div>
       <div class="fg">
         <label class="fl">League Name</label>
         <input class="fi" id="s-name" type="text" value="${esc(S.leagueName)}" maxlength="50">
@@ -2877,156 +2888,153 @@ function openSettings() {
         <input class="fi" id="s-deadline" type="number" value="${S.deadlineHours ?? 0}" min="0" max="168"
                placeholder="0 = no auto-deadline">
       </div>
+    </div>
 
-      <div class="sep"></div>
-
-      <div style="margin-bottom:12px">
-        <div class="card-title">Scoring Rules</div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
-          Points awarded for each <strong style="color:var(--text)">correct prediction</strong>.
-          Set to 0 to disable a position.
-        </p>
-        <div class="scoring-grid">
-          <div class="scoring-section">
-            <div class="scoring-section-title">🏁 Race (P1–P5)</div>
-            ${RACE_POS.map(pos => `
-              <div class="scoring-row">
-                <label>${POS_LABEL[pos]}</label>
-                <input type="number" class="scoring-input" id="sc-race-${pos}"
-                       value="${S.scoring.race[pos]}" min="0" max="999">
-              </div>
-            `).join('')}
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Scoring Rules</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+        Points awarded for each <strong style="color:var(--text)">correct prediction</strong>.
+        Set to 0 to disable a position.
+      </p>
+      <div class="scoring-grid">
+        <div class="scoring-section">
+          <div class="scoring-section-title">🏁 Race (P1–P5)</div>
+          ${RACE_POS.map(pos => `
             <div class="scoring-row">
-              <label style="color:var(--gold)">Top-5 ~</label>
-              <input type="number" class="scoring-input" id="sc-race-topN"
-                     value="${S.scoring.race.topN ?? 5}" min="0" max="999">
+              <label>${POS_LABEL[pos]}</label>
+              <input type="number" class="scoring-input" id="sc-race-${pos}"
+                     value="${S.scoring.race[pos]}" min="0" max="999">
             </div>
+          `).join('')}
+          <div class="scoring-row">
+            <label style="color:var(--gold)">Top-5 ~</label>
+            <input type="number" class="scoring-input" id="sc-race-topN"
+                   value="${S.scoring.race.topN ?? 5}" min="0" max="999">
           </div>
-          <div class="scoring-section">
-            <div class="scoring-section-title">🕐 Qualifying (P1–P3)</div>
-            ${PODIUM_POS.map(pos => `
-              <div class="scoring-row">
-                <label>${POS_LABEL[pos]}</label>
-                <input type="number" class="scoring-input" id="sc-quali-${pos}"
-                       value="${S.scoring.quali[pos]}" min="0" max="999">
-              </div>
-            `).join('')}
-          </div>
-          <div class="scoring-section">
-            <div class="scoring-section-title">⚡ Sprint (P1–P3)</div>
-            ${PODIUM_POS.map(pos => `
-              <div class="scoring-row">
-                <label>${POS_LABEL[pos]}</label>
-                <input type="number" class="scoring-input" id="sc-sprint-${pos}"
-                       value="${S.scoring.sprint[pos]}" min="0" max="999">
-              </div>
-            `).join('')}
+        </div>
+        <div class="scoring-section">
+          <div class="scoring-section-title">🕐 Qualifying (P1–P3)</div>
+          ${PODIUM_POS.map(pos => `
             <div class="scoring-row">
-              <label style="color:var(--gold)">Top-3 ~</label>
-              <input type="number" class="scoring-input" id="sc-sprint-topN"
-                     value="${S.scoring.sprint.topN ?? 3}" min="0" max="999">
+              <label>${POS_LABEL[pos]}</label>
+              <input type="number" class="scoring-input" id="sc-quali-${pos}"
+                     value="${S.scoring.quali[pos]}" min="0" max="999">
             </div>
-          </div>
-          <div class="scoring-section">
-            <div class="scoring-section-title">🔫 Sprint Quali (P1–P3)</div>
-            ${PODIUM_POS.map(pos => `
-              <div class="scoring-row">
-                <label>${POS_LABEL[pos]}</label>
-                <input type="number" class="scoring-input" id="sc-sprintquali-${pos}"
-                       value="${S.scoring.sprintquali[pos]}" min="0" max="999">
-              </div>
-            `).join('')}
-          </div>
+          `).join('')}
         </div>
-      </div>
-
-      <div class="sep"></div>
-
-      <div style="margin-bottom:12px">
-        <div class="card-title">Bonus Predictions</div>
-        <div class="fg">
-          <label class="fl">Specific Driver (for "Where will X finish?")</label>
-          <select class="fs" id="s-bonus-driver">
-            ${driverOptions(S.bonusDriverId)}
-          </select>
-        </div>
-        <div class="scoring-grid" style="grid-template-columns:repeat(3,1fr)">
-          <div class="scoring-section">
-            <div class="scoring-section-title">⚡ Fastest Lap</div>
-            <div class="scoring-row"><label>Correct</label>
-              <input type="number" class="scoring-input" id="sc-bonus-fastestLap"
-                     value="${S.scoring.bonus?.fastestLap || 0}" min="0" max="999">
+        <div class="scoring-section">
+          <div class="scoring-section-title">⚡ Sprint (P1–P3)</div>
+          ${PODIUM_POS.map(pos => `
+            <div class="scoring-row">
+              <label>${POS_LABEL[pos]}</label>
+              <input type="number" class="scoring-input" id="sc-sprint-${pos}"
+                     value="${S.scoring.sprint[pos]}" min="0" max="999">
             </div>
+          `).join('')}
+          <div class="scoring-row">
+            <label style="color:var(--gold)">Top-3 ~</label>
+            <input type="number" class="scoring-input" id="sc-sprint-topN"
+                   value="${S.scoring.sprint.topN ?? 3}" min="0" max="999">
           </div>
-          <div class="scoring-section">
-            <div class="scoring-section-title">📍 Driver Finish</div>
-            <div class="scoring-row"><label>Penalty/pos</label>
-              <input type="number" class="scoring-input" id="sc-bonus-driverPlace"
-                     value="${S.scoring.bonus?.driverPlace || 1}" min="0" max="999">
+        </div>
+        <div class="scoring-section">
+          <div class="scoring-section-title">🔫 Sprint Quali (P1–P3)</div>
+          ${PODIUM_POS.map(pos => `
+            <div class="scoring-row">
+              <label>${POS_LABEL[pos]}</label>
+              <input type="number" class="scoring-input" id="sc-sprintquali-${pos}"
+                     value="${S.scoring.sprintquali[pos]}" min="0" max="999">
             </div>
-            <div style="font-size:10px;color:var(--muted);padding:4px 0 0 0">Pts lost per position off (0 = exact)</div>
-          </div>
-          <div class="scoring-section">
-            <div class="scoring-section-title">⭐ Driver of Day</div>
-            <div class="scoring-row"><label>Correct</label>
-              <input type="number" class="scoring-input" id="sc-bonus-dotd"
-                     value="${S.scoring.bonus?.dotd || 0}" min="0" max="999">
-            </div>
-          </div>
+          `).join('')}
         </div>
-      </div>
-
-      <div class="sep"></div>
-
-      <div style="margin-bottom:12px">
-        <div class="card-title">🖇 Clippy</div>
-        <div class="fg" style="margin-bottom:8px">
-          <label class="fl" style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" id="s-clippy-enabled" ${S.clippyEnabled ? 'checked' : ''}>
-            Enable Clippy (appears after 15s on Predictions)
-          </label>
-        </div>
-        <div class="fg">
-          <label class="fl">Clippy's extra phrase (leave blank to hide)</label>
-          <input class="fi" id="s-clippy-phrase" type="text" value="${esc(S.clippyPhrase || '')}"
-                 maxlength="120" placeholder="e.g. I predict Stupid Stroll for P1">
-        </div>
-      </div>
-
-      <div class="sep"></div>
-
-      <div style="margin-bottom:12px">
-        <div class="card-title">Admin PIN</div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
-          If set, this PIN is required to lock or unlock predictions. Leave blank to allow anyone to lock/unlock.
-        </p>
-        <div class="fg">
-          <label class="fl">PIN (leave blank to disable)</label>
-          <input class="fi" id="s-admin-pin" type="password" value="${esc(S.adminPin || '')}"
-                 maxlength="20" placeholder="No PIN set" autocomplete="new-password">
-        </div>
-      </div>
-
-      <div class="sep"></div>
-
-      <div>
-        <div class="card-title" style="margin-bottom:10px">Data Management</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-          <button class="btn btn-ghost btn-sm" onclick="exportData()">⬇ Export JSON</button>
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('imp').click()">⬆ Import JSON</button>
-          <input type="file" id="imp" accept=".json" style="display:none" onchange="importData(this)">
-        </div>
-        <button class="btn btn-danger btn-sm" onclick="resetAll()">⚠ Reset All Data</button>
       </div>
     </div>
-    <div class="modal-foot">
-      <div></div>
-      <div class="modal-foot-right">
-        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Bonus Predictions</div>
+      <div class="fg">
+        <label class="fl">Specific Driver (for "Where will X finish?")</label>
+        <select class="fs" id="s-bonus-driver">
+          ${driverOptions(S.bonusDriverId)}
+        </select>
+      </div>
+      <div class="scoring-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="scoring-section">
+          <div class="scoring-section-title">⚡ Fastest Lap</div>
+          <div class="scoring-row"><label>Correct</label>
+            <input type="number" class="scoring-input" id="sc-bonus-fastestLap"
+                   value="${S.scoring.bonus?.fastestLap || 0}" min="0" max="999">
+          </div>
+        </div>
+        <div class="scoring-section">
+          <div class="scoring-section-title">📍 Driver Finish</div>
+          <div class="scoring-row"><label>Penalty/pos</label>
+            <input type="number" class="scoring-input" id="sc-bonus-driverPlace"
+                   value="${S.scoring.bonus?.driverPlace || 1}" min="0" max="999">
+          </div>
+          <div style="font-size:10px;color:var(--muted);padding:4px 0 0 0">Pts lost per position off (0 = exact)</div>
+        </div>
+        <div class="scoring-section">
+          <div class="scoring-section-title">⭐ Driver of Day</div>
+          <div class="scoring-row"><label>Correct</label>
+            <input type="number" class="scoring-input" id="sc-bonus-dotd"
+                   value="${S.scoring.bonus?.dotd || 0}" min="0" max="999">
+          </div>
+        </div>
       </div>
     </div>
-  `);
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">🖇 Clippy</div>
+      <div class="fg" style="margin-bottom:8px">
+        <label class="fl" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="s-clippy-enabled" ${S.clippyEnabled ? 'checked' : ''}>
+          Enable Clippy (appears after 15s on Predictions)
+        </label>
+      </div>
+      <div class="fg">
+        <label class="fl">Clippy's extra phrase (leave blank to hide)</label>
+        <input class="fi" id="s-clippy-phrase" type="text" value="${esc(S.clippyPhrase || '')}"
+               maxlength="120" placeholder="e.g. I predict Stupid Stroll for P1">
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Admin PIN</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
+        If set, this PIN is required to lock or unlock predictions. Leave blank to allow anyone to lock/unlock.
+      </p>
+      <div class="fg">
+        <label class="fl">PIN (leave blank to disable)</label>
+        <input class="fi" id="s-admin-pin" type="password" value="${esc(S.adminPin || '')}"
+               maxlength="20" placeholder="No PIN set" autocomplete="new-password">
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Appearance</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:13px;color:var(--muted)">Theme</span>
+        <button class="btn btn-ghost btn-sm" onclick="toggleTheme();renderSettings()">
+          ${document.body.classList.contains('light') ? '☀️ Light mode' : '🌙 Dark mode'}
+        </button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-title">Data Management</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn btn-ghost btn-sm" onclick="exportData()">⬇ Export JSON</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('imp').click()">⬆ Import JSON</button>
+        <input type="file" id="imp" accept=".json" style="display:none" onchange="importData(this)">
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="resetAll()">⚠ Reset All Data</button>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;padding-bottom:16px">
+      <button class="btn btn-primary" style="min-width:160px" onclick="saveSettings()">💾 Save Settings</button>
+    </div>
+  `;
 }
 
 function saveSettings() {
@@ -3077,7 +3085,6 @@ function saveSettings() {
 
   save();
   document.getElementById('hdr-name').textContent = S.leagueName;
-  closeModal();
   toast('Settings saved');
 }
 
@@ -3098,7 +3105,7 @@ function importData(input) {
     try {
       const data = JSON.parse(e.target.result);
       Object.assign(S, data);
-      save(); closeModal();
+      save();
       document.getElementById('hdr-name').textContent = S.leagueName;
       renderTab('dashboard');
       toast('Data imported successfully');
@@ -3110,7 +3117,7 @@ function importData(input) {
 function resetAll() {
   if (!confirm('Reset ALL data? Participants, predictions, and results will be permanently deleted.')) return;
   S = Object.assign({}, DEFAULTS, { participants:[], predictions:{}, results:{}, locked:{} });
-  save(); closeModal();
+  save();
   document.getElementById('hdr-name').textContent = S.leagueName;
   switchTab('dashboard');
   toast('All data reset');
