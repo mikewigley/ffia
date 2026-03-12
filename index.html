@@ -279,7 +279,7 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
   .nav-tab .ni { font-size: 20px; }
   .nav-tab span:not(.ni) { display: block !important; white-space: nowrap; overflow: hidden; font-size: 9px; }
   .main { padding-bottom: 90px; }
-  .pred-race-nav { position: fixed !important; bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important; left: 0; right: 0; z-index: 201; border-radius: 0 !important; }
+  .pred-race-nav { position: fixed !important; bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important; left: 0; right: 0; z-index: 201; border-radius: 0 !important; }
   #tab-predictions { padding-bottom: 140px; }
   #tab-results { padding-bottom: 140px; }
   .pred-race-title { top: 62px; }
@@ -330,10 +330,11 @@ body.light ::-webkit-scrollbar-thumb { background: #ccc; }
 
 /* ── PODIUM REVEAL ANIMATION ── */
 @keyframes riseBlock { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes fadeInUp  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .reveal-col   { display: flex; flex-direction: column; align-items: center; gap: 8px;
                 flex: 1; max-width: 200px; }
-.reveal-name  { font-size: 13px; font-weight: 700; text-align: center; }
-.reveal-pts   { font-size: 12px; color: var(--muted2); }
+.reveal-name  { font-size: 13px; font-weight: 700; text-align: center; opacity: 0; }
+.reveal-pts   { font-size: 12px; color: var(--muted2); opacity: 0; }
 .reveal-block { width: 100%; border-radius: 8px 8px 0 0; display: flex;
                 align-items: center; justify-content: center; font-size: 28px;
                 transform-origin: bottom;
@@ -1090,17 +1091,45 @@ function renderPodiumReveal(lb) {
     const p = top3[idx];
     if (!p) return '<div class="reveal-col"></div>';
     const h = heights[idx];
-    const delay = [0.6, 0.2, 1.0][idx];
+    const blockDelay = [0.6, 0.2, 1.0][idx];
+    const nameDelay  = (blockDelay + 1.25).toFixed(2);
     const color = pColor(p);
     return `
       <div class="reveal-col">
-        <div class="reveal-name" style="color:${color}">${esc(p.name)}</div>
-        <div class="reveal-pts">${p.rpts} pts</div>
-        <div class="reveal-block" style="height:${h}px;background:linear-gradient(to top,${color}44,${color}11);border:1px solid ${color}66;animation-delay:${delay}s">
+        <div class="reveal-name" style="color:${color};animation:fadeInUp .5s ease ${nameDelay}s forwards">${esc(p.name)}</div>
+        <div class="reveal-pts" style="animation:fadeInUp .5s ease ${nameDelay}s forwards">${p.rpts} pts</div>
+        <div class="reveal-block" style="height:${h}px;background:linear-gradient(to top,${color}44,${color}11);border:1px solid ${color}66;animation-delay:${blockDelay}s">
           ${medals[idx]}
         </div>
       </div>`;
   });
+
+  // Full race standings table
+  const allScored = lb.map(p => ({ ...p, rpts: calcRacePts(p.id, _revealRaceId), correct: predStats(p.id, _revealRaceId).correct }))
+    .sort((a, b) => b.rpts - a.rpts);
+
+  const tableHtml = `
+    <div class="tw" style="margin-top:20px">
+      <table>
+        <thead><tr>
+          <th>Rank</th><th>Participant</th>
+          <th style="text-align:right">Race Points</th>
+          <th style="text-align:center">Correct Preds</th>
+        </tr></thead>
+        <tbody>
+          ${allScored.map((p, i) => {
+            const icon = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-weight:700">#${i+1}</span>`;
+            const color = pColor(p);
+            return `<tr>
+              <td>${icon}</td>
+              <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px;vertical-align:middle"></span><strong>${esc(p.name)}</strong></td>
+              <td style="text-align:right;font-weight:800;color:${p.rpts>0?'var(--green)':p.rpts<0?'#ff7070':'var(--muted)'}">${p.rpts}</td>
+              <td style="text-align:center;color:var(--muted2)">${p.correct}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
 
   return `
     <div class="card">
@@ -1115,6 +1144,7 @@ function renderPodiumReveal(lb) {
         <button class="btn btn-ghost btn-sm" onclick="_revealRaceId=_revealRaceId;renderDashboard()">↺ Replay</button>
       </div>
       <div class="reveal-wrap">${cols.join('')}</div>
+      ${tableHtml}
     </div>`;
 }
 
