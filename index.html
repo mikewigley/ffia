@@ -34,7 +34,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', syste
 .header { background: #000; border-bottom: 3px solid var(--red); position: sticky; top: 0; z-index: 100; padding-top: env(safe-area-inset-top, 0px); }
 .header-inner { max-width: 1280px; margin: 0 auto; padding: 0 20px; min-height: 62px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
 .header-brand { display: flex; align-items: center; gap: 14px; }
-.logo { background: var(--red); color: #fff; font-weight: 900; font-size: 15px; font-style: italic; padding: 4px 10px; border-radius: 4px; letter-spacing: -.5px; }
+.logo { background: #fff; color: var(--red); font-weight: 900; font-size: 15px; font-style: italic; padding: 4px 10px; border-radius: 4px; letter-spacing: -.5px; border: 1.5px solid var(--red); }
 .header-title { font-size: 19px; font-weight: 700; letter-spacing: -.3px; }
 .header-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
 
@@ -336,15 +336,51 @@ body.light ::-webkit-scrollbar-thumb { background: #ccc; }
 .reveal-name  { font-size: 13px; font-weight: 700; text-align: center; opacity: 0; }
 .reveal-pts   { font-size: 12px; color: var(--muted2); opacity: 0; }
 .reveal-block { width: 100%; border-radius: 8px 8px 0 0; display: flex;
-                align-items: center; justify-content: center; font-size: 28px;
-                transform-origin: bottom;
-                animation: riseBlock 1.2s cubic-bezier(.22,.8,.22,1) forwards; }
+                align-items: center; justify-content: center; font-size: 56px;
+                transform-origin: bottom; }
 .reveal-wrap  { display: flex; justify-content: center; align-items: flex-end;
                 gap: 12px; min-height: 180px; padding: 0 10px; }
+.podium-platform { width: 100%; display: flex; align-items: center; justify-content: center;
+                   background: #f5f5f5; border-radius: 0 0 8px 8px;
+                   padding: 8px 24px; margin-bottom: 16px; font-size: 15px; font-weight: 800;
+                   letter-spacing: 0.02em; box-sizing: border-box; }
+.podium-platform-wrap { display: flex; justify-content: center; }
+.podium-stage { display: flex; flex-direction: column; align-items: stretch;
+                width: 100%; max-width: 660px; margin: 0 auto; }
+.podium-platform-ffia { background: #fff; color: #e10600; font-weight: 900; font-style: italic;
+                        padding: 2px 7px; border-radius: 4px; letter-spacing: -.5px;
+                        border: 1.5px solid #e10600; margin-right: 14px; }
+.podium-platform-race { color: #111111; font-weight: 900; font-style: italic; letter-spacing: -.5px; }
+
+/* ── HELICOPTER ── */
+@keyframes heliFlyin {
+  0%   { transform: translateX(150vw); opacity: 1; }
+  75%  { transform: translateX(30px); }
+  88%  { transform: translateX(-12px); }
+  100% { transform: translateX(0px); }
+}
+@keyframes heliBob {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+@keyframes heliFlyout {
+  0%   { transform: translateY(0px); opacity: 1; }
+  100% { transform: translateX(-150vw); opacity: 0; }
+}
+.heli-el { position: fixed; font-size: 88px; z-index: 9998; pointer-events: none;
+           transition: opacity 0.4s; }
 
 /* ── CONFETTI ── */
 @keyframes confFall { 0% { transform: translateY(-10px) rotate(0deg); opacity:1; }
   100% { transform: translateY(100vh) rotate(540deg); opacity:0; } }
+
+/* ── CHAMPAGNE ── */
+@keyframes champRise {
+  0%   { transform: translate(var(--cdx0), var(--cdy0)) scale(1); opacity: 1; }
+  100% { transform: translate(var(--cdx1), var(--cdy1)) scale(0); opacity: 0; }
+}
+.champ-drop { position: fixed; border-radius: 50%; pointer-events: none; z-index: 9999;
+              animation: champRise var(--cdur) ease-out var(--cdelay) forwards; opacity: 0; }
 .confetti-piece { position: fixed; width: 9px; height: 14px; top: 0;
                   z-index: 9999; border-radius: 2px; pointer-events: none;
                   animation: confFall linear forwards; }
@@ -1041,43 +1077,22 @@ function renderPodium(lb) {
   </div>`;
 }
 
-// ── LAST RACE HIGHLIGHT ────────────────────────────────────────────
-function renderLastRaceHighlight(lb, completedRaceIds) {
-  if (completedRaceIds.length === 0 || lb.length === 0) return '';
-  const lastId = completedRaceIds[completedRaceIds.length - 1];
-  const race = raceById(lastId);
-  const scored = lb.map(p => ({ ...p, rpts: calcRacePts(p.id, lastId) })).sort((a,b) => b.rpts - a.rpts);
-  const winner = scored[0];
-  if (winner.rpts === 0) return '';
-  return `
-    <div class="card" style="background:linear-gradient(135deg,rgba(225,6,0,.08),rgba(255,215,0,.05));border-color:rgba(225,6,0,.25)">
-      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <div style="font-size:36px">🏆</div>
-        <div style="flex:1">
-          <div class="card-title" style="margin-bottom:4px">Last Race Winner — ${esc(race.name)}</div>
-          <div style="font-size:20px;font-weight:800;color:${pColor(winner)}">${esc(winner.name)}</div>
-          <div style="font-size:13px;color:var(--muted2);margin-top:2px">${winner.rpts} points scored</div>
-        </div>
-        <div style="display:flex;gap:16px;flex-wrap:wrap">
-          ${scored.slice(0,4).map((p,i) => `
-            <div style="text-align:center">
-              <div style="font-size:18px">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'4️⃣'}</div>
-              <div style="font-size:11px;font-weight:700;color:${pColor(p)}">${esc(p.name.split(' ')[0])}</div>
-              <div style="font-size:13px;font-weight:800">${p.rpts}</div>
-            </div>`).join('')}
-        </div>
-      </div>
-    </div>`;
-}
-
 // ── PODIUM REVEAL ANIMATION ────────────────────────────────────────
 let _revealRaceId = null;
+let _podiumRevealed = false;
+let _champagneTimer = null;
+let _standingsRevealed = false;
+
 function renderPodiumReveal(lb) {
   const completedRaceIds = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).map(r => r.id);
   if (completedRaceIds.length === 0) return '';
-  if (!_revealRaceId || !completedRaceIds.includes(_revealRaceId))
+  if (!_revealRaceId || !completedRaceIds.includes(_revealRaceId)) {
     _revealRaceId = completedRaceIds[completedRaceIds.length - 1];
+    _podiumRevealed = false;
+    _standingsRevealed = false;
+  }
 
+  const race = raceById(_revealRaceId);
   const scored = lb.map(p => ({ ...p, rpts: calcRacePts(p.id, _revealRaceId) }))
     .sort((a, b) => b.rpts - a.rpts);
   const top3 = scored.slice(0, 3);
@@ -1091,14 +1106,25 @@ function renderPodiumReveal(lb) {
     const p = top3[idx];
     if (!p) return '<div class="reveal-col"></div>';
     const h = heights[idx];
+    const color = pColor(p);
+    // If already fully revealed, render statically — no animation to avoid re-playing
+    if (_standingsRevealed) {
+      return `
+        <div class="reveal-col">
+          <div class="reveal-name" style="color:${color};font-size:${['20px','17px','15px'][idx]};opacity:1">${esc(p.name)}</div>
+          <div class="reveal-pts" style="font-size:${['16px','14px','13px'][idx]};opacity:1">${p.rpts} pts</div>
+          <div class="reveal-block" id="${['p1','p2','p3'][idx]}-reveal-block" style="height:${h}px;background:linear-gradient(to top,${color}44,${color}11);border:1px solid ${color}66;transform:scaleY(1)">
+            ${medals[idx]}
+          </div>
+        </div>`;
+    }
     const blockDelay = [3.2, 1.6, 0.4][idx]; // P3 first, P2 second, P1 last
     const nameDelay  = (blockDelay + 1.25).toFixed(2);
-    const color = pColor(p);
     return `
       <div class="reveal-col">
-        <div class="reveal-name" style="color:${color};animation:fadeInUp .5s ease ${nameDelay}s forwards">${esc(p.name)}</div>
-        <div class="reveal-pts" style="animation:fadeInUp .5s ease ${nameDelay}s forwards">${p.rpts} pts</div>
-        <div class="reveal-block" style="height:${h}px;background:linear-gradient(to top,${color}44,${color}11);border:1px solid ${color}66;animation-delay:${blockDelay}s">
+        <div class="reveal-name" style="color:${color};font-size:${['20px','17px','15px'][idx]};animation:fadeInUp .5s ease ${nameDelay}s forwards">${esc(p.name)}</div>
+        <div class="reveal-pts" style="font-size:${['16px','14px','13px'][idx]};animation:fadeInUp .5s ease ${nameDelay}s forwards">${p.rpts} pts</div>
+        <div class="reveal-block" id="${['p1','p2','p3'][idx]}-reveal-block" style="height:${h}px;background:linear-gradient(to top,${color}44,${color}11);border:1px solid ${color}66;animation:riseBlock 1.2s cubic-bezier(.22,.8,.22,1) ${blockDelay}s forwards;transform:scaleY(0)">
           ${medals[idx]}
         </div>
       </div>`;
@@ -1131,20 +1157,52 @@ function renderPodiumReveal(lb) {
       </table>
     </div>`;
 
+  const raceSelector = `
+    <select class="fs" style="max-width:280px" onchange="_revealRaceId=+this.value;_podiumRevealed=false;_standingsRevealed=false;clearTimeout(_champagneTimer);renderDashboard()">
+      ${completedRaceIds.map(id => {
+        const r = raceById(id);
+        return `<option value="${id}" ${id===_revealRaceId?'selected':''}>Round ${id}: ${r.name}</option>`;
+      }).join('')}
+    </select>`;
+
+  if (!_podiumRevealed) {
+    clearTimeout(_champagneTimer);
+    return `
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+          <div class="card-title" style="margin:0;flex:1">Race ${_revealRaceId} Results</div>
+          ${raceSelector}
+        </div>
+        <div style="text-align:center;padding:28px 20px;cursor:pointer" onclick="_podiumRevealed=true;renderDashboard()">
+          <div style="font-size:40px;margin-bottom:10px">🏆</div>
+          <div style="color:var(--muted);font-size:13px;margin-bottom:16px">Who made it onto the podium?</div>
+          <button class="btn btn-primary" style="pointer-events:none">👁 Click to Reveal</button>
+        </div>
+      </div>`;
+  }
+
+  if (!_standingsRevealed) {
+    clearTimeout(_champagneTimer);
+    _champagneTimer = setTimeout(fireChampagne, 4500);
+  }
+
   return `
     <div class="card">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
-        <div class="card-title" style="margin:0;flex:1">Podium Reveal</div>
-        <select class="fs" style="max-width:280px" onchange="_revealRaceId=+this.value;renderDashboard()">
-          ${completedRaceIds.map(id => {
-            const r = raceById(id);
-            return `<option value="${id}" ${id===_revealRaceId?'selected':''}>Round ${id}: ${r.name}</option>`;
-          }).join('')}
-        </select>
-        <button class="btn btn-ghost btn-sm" onclick="_revealRaceId=_revealRaceId;renderDashboard()">↺ Replay</button>
+        <div class="card-title" style="margin:0;flex:1">Race ${_revealRaceId} Results</div>
+        ${raceSelector}
+        <button class="btn btn-ghost btn-sm" onclick="_podiumRevealed=false;_standingsRevealed=false;clearTimeout(_champagneTimer);renderDashboard()">↺ Replay</button>
       </div>
-      <div class="reveal-wrap">${cols.join('')}</div>
-      ${tableHtml}
+      <div class="podium-platform-wrap">
+        <div class="podium-stage">
+          <div class="reveal-wrap">${cols.join('')}</div>
+          <div class="podium-platform">
+            <span class="podium-platform-ffia">FFIA</span>
+            <span class="podium-platform-race">Race ${_revealRaceId} &nbsp;(${race.loc})</span>
+          </div>
+        </div>
+      </div>
+      ${_standingsRevealed ? tableHtml : ''}
     </div>`;
 }
 
@@ -1257,7 +1315,88 @@ function renderRaceReplay(lb) {
     </div>`;
 }
 
-// ── CONFETTI ──────────────────────────────────────────────────────
+// ── CHAMPAGNE ─────────────────────────────────────────────────────
+function fireChampagne() {
+  const colors = ['#ffd700','#ffe566','#fff8dc','#fffacd','#f5e642','#ffffff','#c8f5c0'];
+  const count = 70;
+
+  // P3 fires first, then P2, then P1 (matching reveal order)
+  const sources = [
+    { id: 'p3-reveal-block', delay: 0 },
+    { id: 'p2-reveal-block', delay: 600 },
+    { id: 'p1-reveal-block', delay: 1200 },
+  ];
+
+  sources.forEach(({ id, delay: sourceDelay }) => {
+    const block = document.getElementById(id);
+    if (!block) return;
+    const rect = block.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + 10;
+
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => {
+        const el = document.createElement('div');
+        el.className = 'champ-drop';
+        const size = 4 + Math.random() * 7;
+        const angleDeg = (Math.random() * 160 - 80);
+        const angleRad = angleDeg * Math.PI / 180;
+        const speed = 60 + Math.random() * 130;
+        const dx = Math.sin(angleRad) * speed;
+        const dy = -(Math.cos(angleRad) * speed) - Math.random() * 30;
+        const dur = (1.2 + Math.random() * 1.2).toFixed(2);
+
+        el.style.cssText = `
+          left:${cx - size/2}px; top:${cy - size/2}px;
+          width:${size}px; height:${size}px;
+          background:${colors[Math.floor(Math.random() * colors.length)]};
+          --cdx0:0px; --cdy0:0px;
+          --cdx1:${dx.toFixed(1)}px; --cdy1:${dy.toFixed(1)}px;
+          --cdur:${dur}s; --cdelay:0s;
+        `;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), (+dur + 0.1) * 1000);
+      }, sourceDelay + i * 18);
+    }
+  });
+
+  // After all particles from all sources have finished
+  const lastParticleEnd = 1200 + (count - 1) * 18 + 2500;
+  setTimeout(() => { _standingsRevealed = true; reRenderActive(); }, lastParticleEnd);
+
+  // Helicopter special: flies in if Kelly wins
+  const p1winner = leaderboard().map(p => ({ ...p, rpts: calcRacePts(p.id, _revealRaceId) }))
+    .sort((a, b) => b.rpts - a.rpts)[0];
+  if (p1winner && p1winner.name.toLowerCase().includes('kelly')) {
+    setTimeout(fireHelicopter, 800);
+  }
+}
+
+
+function fireHelicopter() {
+  const p1block = document.getElementById('p1-reveal-block');
+  if (!p1block) return;
+  const rect = p1block.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2 - 22; // centre heli over block
+  const cy = rect.top - 60;
+
+  const el = document.createElement('div');
+  el.className = 'heli-el';
+  el.textContent = '🚁';
+  el.style.cssText = `left:${cx}px; top:${cy}px; animation: heliFlyin 2.2s cubic-bezier(.22,.8,.22,1) forwards;`;
+  document.body.appendChild(el);
+
+  // Switch to bobbing hover after fly-in
+  setTimeout(() => {
+    el.style.animation = 'heliBob 1.6s ease-in-out infinite';
+    // Fly out left after hovering for a bit
+    setTimeout(() => {
+      el.style.animation = 'heliFlyout 1.4s ease-in forwards';
+      setTimeout(() => el.remove(), 1500);
+    }, 5000);
+  }, 2200);
+}
+
 function fireConfetti() {
   const colors = ['#e10600','#ffd700','#00d856','#00aaff','#ff6b35','#b44fd9','#ff4d9e','#ffffff'];
   for (let i = 0; i < 80; i++) {
@@ -1625,6 +1764,14 @@ function renderDashboard() {
       </div>
     </div>
 
+    ${lb.length > 0 ? renderPodiumReveal(lb) : ''}
+
+    ${(!_podiumRevealed || !_standingsRevealed) && completedRaceIds.length > 0 ? `
+      <div class="card" style="text-align:center;padding:32px 20px;opacity:.55">
+        <div style="font-size:28px;margin-bottom:8px">🏆</div>
+        <div style="color:var(--muted);font-size:13px">Season standings will appear after the podium reveal</div>
+      </div>
+    ` : `
     <div class="card">
       <div class="card-title">Season Standings</div>
       ${lb.length === 0 ? `
@@ -1673,9 +1820,9 @@ function renderDashboard() {
         </div>
       `}
     </div>
+    `}
 
-    ${renderLastRaceHighlight(lb, completedRaceIds)}
-
+    ${_standingsRevealed ? `
     ${done > 0 ? (() => {
       const completedRaces = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).slice(-8);
       return `
@@ -1709,13 +1856,12 @@ function renderDashboard() {
 
     ${lb.length > 0 ? renderAnimations(lb) : ''}
 
-    ${lb.length > 0 ? renderPodiumReveal(lb) : ''}
-
     ${lb.length >= 2 ? renderHeadToHead(lb) : ''}
 
     ${renderProgressionChart(lb)}
 
     ${lb.length > 0 ? renderRaceReplay(lb) : ''}
+    ` : ''}
   `;
 }
 
