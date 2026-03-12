@@ -1981,10 +1981,8 @@ function renderPredictions(raceId) {
           : effectiveLocked
           ? `${deadlinePassed && !locked ? '<span class="badge badge-locked">⏰ Deadline Passed</span>' : '<span class="badge badge-locked">🔒 Locked</span>'}
              <button class="btn btn-ghost btn-sm" onclick="toggleLock(${_predRaceId})">${locked ? '🔓 Unlock' : '🔒 Lock'}</button>`
-          : `<button class="btn btn-ghost btn-sm" onclick="toggleLock(${_predRaceId})">🔒 Lock Predictions</button>`}
-        ${!isCancelled && hasParticipants && !effectiveLocked
-          ? `<button class="btn btn-primary" onclick="openPredictionsModal(${_predRaceId})">✏ Enter Predictions</button>`
-          : !isCancelled && hasParticipants && effectiveLocked
+          : ''}
+        ${!isCancelled && hasParticipants && effectiveLocked
           ? `<button class="btn btn-ghost btn-sm" onclick="openPredictionsModal(${_predRaceId})">👁 View Predictions</button>`
           : ''}
       </div>
@@ -2726,7 +2724,11 @@ function openPredictionsModal(raceId, startPid) {
   _pred.raceId = raceId;
   _pred.idx    = startPid != null
     ? Math.max(0, S.participants.findIndex(p => p.id === startPid))
-    : 0;
+    : (() => {
+        const identity = getIdentity();
+        const idx = identity ? S.participants.findIndex(p => p.id === identity.id) : -1;
+        return idx >= 0 ? idx : 0;
+      })();
   // Deep-copy existing predictions into buffer
   _pred.buf = {};
   S.participants.forEach(p => {
