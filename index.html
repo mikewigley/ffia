@@ -418,16 +418,10 @@ body.light ::-webkit-scrollbar-thumb { background: #ccc; }
 <div id="app">
   <header class="header">
     <div class="header-inner">
-      <div class="header-brand">
-        <span class="logo">FFIA</span>
-        <div>
-          <h1 class="header-title" id="hdr-name">FFIA Fantasy League</h1>
-          <p class="header-sub">2026 Season &mdash; 24 Races &middot; 22 Drivers</p>
-        </div>
-      </div>
-      <button class="btn btn-ghost btn-sm" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
+      <span class="logo">FFIA</span>
+      <button class="btn btn-ghost btn-sm" id="identity-btn" onclick="showIdentityPicker()" style="font-size:13px;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:1;text-align:left">👤 Who are you?</button>
       <span id="sync-status" style="font-size:11px;color:var(--muted);white-space:nowrap"></span>
-      <button class="btn btn-ghost btn-sm" id="identity-btn" onclick="showIdentityPicker()" style="font-size:13px;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis">👤 Who are you?</button>
+      <button class="btn btn-ghost btn-sm" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
     </div>
   </header>
 
@@ -730,7 +724,7 @@ function initFirebase() {
       if (remote) {
         S = fbMerge(remote);
         try { localStorage.setItem('f1fl26v1', JSON.stringify(S)); } catch(_) {}
-        document.getElementById('hdr-name').textContent = S.leagueName;
+        { const _hn = document.getElementById('hdr-name'); if (_hn) _hn.textContent = S.leagueName; }
         renderTab(currentTab());
       }
       syncStatus('synced');
@@ -3424,7 +3418,7 @@ function saveSettings() {
   if (dlEl) S.deadlineHours = Math.max(0, +dlEl.value || 0);
 
   save();
-  document.getElementById('hdr-name').textContent = S.leagueName;
+  { const _hn = document.getElementById('hdr-name'); if (_hn) _hn.textContent = S.leagueName; }
   toast('Settings saved');
 }
 
@@ -3446,7 +3440,7 @@ function importData(input) {
       const data = JSON.parse(e.target.result);
       Object.assign(S, data);
       save();
-      document.getElementById('hdr-name').textContent = S.leagueName;
+      { const _hn = document.getElementById('hdr-name'); if (_hn) _hn.textContent = S.leagueName; }
       renderTab('dashboard');
       toast('Data imported successfully');
     } catch(_) { toast('Invalid JSON file', 'err'); }
@@ -3458,7 +3452,7 @@ function resetAll() {
   if (!confirm('Reset ALL data? Participants, predictions, and results will be permanently deleted.')) return;
   S = Object.assign({}, DEFAULTS, { participants:[], predictions:{}, results:{}, locked:{}, lockedP:{} });
   save();
-  document.getElementById('hdr-name').textContent = S.leagueName;
+  { const _hn = document.getElementById('hdr-name'); if (_hn) _hn.textContent = S.leagueName; }
   switchTab('dashboard');
   toast('All data reset');
 }
@@ -3537,7 +3531,6 @@ function isOwnPrediction(pid) {
 // INIT
 // ═══════════════════════════════════════════════════════════════════
 
-document.getElementById('hdr-name').textContent = S.leagueName;
 renderDashboard();
 setTimeout(() => {
   updateIdentityUI();
