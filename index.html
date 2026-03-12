@@ -636,6 +636,8 @@ const DEFAULTS = {
   results: {},
   // locked[raceId] = true — predictions frozen for that race
   locked: {},
+  // lockedP[raceId][participantId] = true — individual participant lock
+  lockedP: {},
 };
 
 let S = loadState();
@@ -2070,17 +2072,28 @@ function renderParticipantCards(raceId) {
     const pct     = totalSlots ? Math.round(filled / totalSlots * 100) : 0;
     const isDone  = filled === totalSlots;
     const barClr  = isDone ? 'var(--green)' : pct > 0 ? 'var(--red)' : 'rgba(255,255,255,.2)';
+    const pLocked = !!S.lockedP?.[raceId]?.[p.id];
+    const anyLocked = locked || pLocked;
     return `
-      <button class="pq-card${isDone ? ' pq-done' : ''}" onclick="openPredictionsModal(${raceId}, '${p.id}')">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <div class="pq-name" style="margin:0">${esc(p.name)}</div>
-          <span style="font-size:13px">${isDone ? '✅' : filled > 0 ? '⚠️' : '○'}</span>
+      <div class="pq-card${isDone ? ' pq-done' : ''}" style="padding:0;overflow:hidden">
+        <div style="border-bottom:1px solid var(--border);padding:5px 8px;display:flex;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 8px"
+                  onclick="event.stopPropagation();toggleParticipantLock(${raceId},'${p.id}')">
+            ${pLocked ? '🔓 Unlock' : '🔒 Lock'}
+          </button>
         </div>
-        <div class="pq-count">${filled} / ${totalSlots} positions${locked ? ' 👁' : ' ✏'}</div>
-        <div class="pq-bar-bg">
-          <div class="pq-bar-fill" style="width:${pct}%;background:${barClr}"></div>
-        </div>
-      </button>`;
+        <button style="width:100%;background:none;border:none;cursor:pointer;text-align:left;padding:10px 10px 6px;color:inherit;font-family:inherit"
+                onclick="openPredictionsModal(${raceId}, '${p.id}')">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <div class="pq-name" style="margin:0">${esc(p.name)}</div>
+            <span style="font-size:13px">${isDone ? '✅' : filled > 0 ? '⚠️' : '○'}</span>
+          </div>
+          <div class="pq-count">${filled} / ${totalSlots} positions${anyLocked ? ' 🔒' : ' ✏'}</div>
+          <div class="pq-bar-bg">
+            <div class="pq-bar-fill" style="width:${pct}%;background:${barClr}"></div>
+          </div>
+        </button>
+      </div>`;
   }).join('');
 
   return `<div class="pq-grid">${cards}</div>`;
@@ -2735,7 +2748,8 @@ function renderPredModal() {
   const race = raceById(_pred.raceId);
   const p    = S.participants[_pred.idx];
   const buf  = _pred.buf[p.id];
-  const locked = !!S.locked[_pred.raceId] || isPastDeadline(_pred.raceId);
+  const raceLocked = !!S.locked[_pred.raceId] || isPastDeadline(_pred.raceId);
+  const locked = raceLocked || !!S.lockedP?.[_pred.raceId]?.[p.id];
 
   const sessions = race.sprint ? [
     { key: 'sprintquali', label: 'Sprint Quali', positions: PODIUM_POS, icon: '🕐', pts: S.scoring.sprintquali },
@@ -2757,7 +2771,14 @@ function renderPredModal() {
         <div class="modal-title">Predictions — ${esc(race.name)}</div>
         <div class="modal-title-sub">Round ${race.id} · ${fmtDate(race.date)} · Max ${totalMaxPts} pts${locked?' · 🔒 Locked':''}</div>
       </div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${!raceLocked ? `
+          <button class="btn btn-ghost btn-sm" onclick="toggleParticipantLock(${_pred.raceId},'${p.id}');renderPredModal()">
+            ${locked ? '🔓 Unlock' : '🔒 Lock'}
+          </button>
+        ` : ''}
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
     </div>
     <div class="pred-nav">
       <button class="btn btn-ghost btn-sm" onclick="predNav(-1)" ${_pred.idx === 0 ? 'disabled style="opacity:.4"' : ''}>← Prev</button>
@@ -3148,6 +3169,17 @@ function _checkPin() {
   }
 }
 
+function toggleParticipantLock(raceId, pid) {
+  if (!S.lockedP) S.lockedP = {};
+  if (!S.lockedP[raceId]) S.lockedP[raceId] = {};
+  S.lockedP[raceId][pid] = !S.lockedP[raceId][pid];
+  if (!S.lockedP[raceId][pid]) delete S.lockedP[raceId][pid];
+  const p = S.participants.find(p => p.id === pid);
+  save();
+  toast(S.lockedP[raceId]?.[pid] ? `🔒 ${p?.name || 'Participant'} locked` : `🔓 ${p?.name || 'Participant'} unlocked`);
+  renderPredictions(_predRaceId);
+}
+
 function toggleLock(raceId) {
   const doLock = () => {
     S.locked[raceId] = !S.locked[raceId];
@@ -3419,7 +3451,7 @@ function importData(input) {
 
 function resetAll() {
   if (!confirm('Reset ALL data? Participants, predictions, and results will be permanently deleted.')) return;
-  S = Object.assign({}, DEFAULTS, { participants:[], predictions:{}, results:{}, locked:{} });
+  S = Object.assign({}, DEFAULTS, { participants:[], predictions:{}, results:{}, locked:{}, lockedP:{} });
   save();
   document.getElementById('hdr-name').textContent = S.leagueName;
   switchTab('dashboard');
