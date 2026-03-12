@@ -279,6 +279,7 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
   .main { padding-bottom: 90px; }
   .pred-race-nav { position: fixed !important; bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important; left: 0; right: 0; z-index: 150; border-radius: 0 !important; }
   #tab-predictions { padding-bottom: 130px; }
+  #tab-results { padding-bottom: 130px; }
   .pred-race-title { top: 62px; }
   .stats-row { grid-template-columns: repeat(2,1fr); }
   .header-title { font-size: 16px; }
@@ -2182,20 +2183,15 @@ function renderResults(raceId) {
       </button>
     </div>
 
+    <!-- Race title (sticky) -->
+    <div class="pred-race-title">Race ${_resRaceId}: ${race.name}</div>
+
     <!-- Race selector -->
     <div class="card" style="margin-bottom:16px">
       <label class="fl">Select Race</label>
       <select class="fs" onchange="renderResults(+this.value)">
         ${RACES.map(r => `<option value="${r.id}" ${r.id===_resRaceId?'selected':''}>Round ${r.id}: ${r.name}${S.results[r.id]?' ✓':''}</option>`).join('')}
       </select>
-      <div style="display:flex;gap:10px;margin-top:14px">
-        <button class="btn btn-ghost" style="flex:1;font-size:15px;padding:10px"
-          onclick="renderResults(${_resRaceId - 1})"
-          ${_resRaceId <= 1 ? 'disabled style="opacity:.3;flex:1;font-size:15px;padding:10px"' : ''}>◀ Prev Race</button>
-        <button class="btn btn-ghost" style="flex:1;font-size:15px;padding:10px"
-          onclick="renderResults(${_resRaceId + 1})"
-          ${_resRaceId >= RACES.length ? 'disabled style="opacity:.3;flex:1;font-size:15px;padding:10px"' : ''}>Next Race ▶</button>
-      </div>
     </div>
 
     ${res ? `
@@ -2244,6 +2240,13 @@ function renderResults(raceId) {
         </div>
       </div>
     ` : ''}
+
+    <div class="pred-race-nav">
+      <button class="btn btn-ghost" onclick="renderResults(${_resRaceId - 1})"
+        ${_resRaceId <= 1 ? 'disabled style="opacity:.3"' : ''}>◀ Prev Race</button>
+      <button class="btn btn-ghost" onclick="renderResults(${_resRaceId + 1})"
+        ${_resRaceId >= RACES.length ? 'disabled style="opacity:.3"' : ''}>Next Race ▶</button>
+    </div>
   `;
 }
 
