@@ -134,10 +134,11 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 
 /* ── BADGES ── */
 .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .3px; }
-.badge-done     { background: rgba(0,216,86,.13); color: var(--green); }
-.badge-upcoming { background: rgba(120,120,120,.15); color: var(--muted2); }
-.badge-next     { background: rgba(225,6,0,.18); color: var(--red); }
-.badge-locked   { background: rgba(255,215,0,.15); color: var(--gold); }
+.badge-done       { background: rgba(0,216,86,.13); color: var(--green); }
+.badge-upcoming   { background: rgba(120,120,120,.15); color: var(--muted2); }
+.badge-next       { background: rgba(225,6,0,.18); color: var(--red); }
+.badge-locked     { background: rgba(255,215,0,.15); color: var(--gold); }
+.badge-cancelled  { background: rgba(120,120,120,.2); color: var(--muted); text-decoration: line-through; }
 
 /* ── PARTICIPANT QUICK-SELECT CARDS ── */
 .pq-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
@@ -179,6 +180,7 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 .race-card:hover { background: var(--card2); border-color: var(--border2); }
 .race-card.done { border-left-color: var(--green); }
 .race-card.nxt  { border-left-color: var(--red); }
+.race-card.cancelled { border-left-color: var(--muted); opacity: .55; }
 .race-rnd { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
 .race-nm  { font-size: 13px; font-weight: 700; line-height: 1.3; margin-bottom: 3px; }
 
@@ -577,6 +579,7 @@ const DEFAULTS = {
   },
   adminPin: '',
   deadlineHours: 0,
+  cancelled: {},
   clippyEnabled: true,
   clippyPhrase: 'I predict Stupid Stroll for P1',
   participants: [],
@@ -715,7 +718,30 @@ function fmtDate(str) {
 
 function nextRace() {
   const today = new Date().toISOString().slice(0,10);
-  return RACES.find(r => !S.results[r.id] && r.date >= today);
+  return RACES.find(r => !S.results[r.id] && !S.cancelled?.[r.id] && r.date >= today);
+}
+
+function prevRaceId(id) {
+  const idx = RACES.findIndex(r => r.id === id);
+  for (let i = idx - 1; i >= 0; i--) if (!S.cancelled?.[RACES[i].id]) return RACES[i].id;
+  return null;
+}
+
+function nextRaceId(id) {
+  const idx = RACES.findIndex(r => r.id === id);
+  for (let i = idx + 1; i < RACES.length; i++) if (!S.cancelled?.[RACES[i].id]) return RACES[i].id;
+  return null;
+}
+
+function toggleCancelled(raceId) {
+  const doToggle = () => {
+    if (!S.cancelled) S.cancelled = {};
+    S.cancelled[raceId] = !S.cancelled[raceId];
+    if (!S.cancelled[raceId]) delete S.cancelled[raceId];
+    save(); reRenderActive();
+    toast(S.cancelled?.[raceId] ? `Race ${raceId} marked as cancelled` : `Race ${raceId} reinstated`);
+  };
+  if (S.adminPin) { requirePin(doToggle); } else { doToggle(); }
 }
 
 function isPastDeadline(raceId) {
@@ -746,6 +772,7 @@ function driverPlacePts(predicted, actual) {
 }
 
 function calcRacePts(pid, raceId) {
+  if (S.cancelled?.[raceId]) return 0;
   const race = raceById(raceId);
   const res  = S.results[raceId];
   const pred = S.predictions[raceId]?.[pid];
@@ -1045,7 +1072,7 @@ function renderLastRaceHighlight(lb, completedRaceIds) {
 // ── PODIUM REVEAL ANIMATION ────────────────────────────────────────
 let _revealRaceId = null;
 function renderPodiumReveal(lb) {
-  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  const completedRaceIds = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).map(r => r.id);
   if (completedRaceIds.length === 0) return '';
   if (!_revealRaceId || !completedRaceIds.includes(_revealRaceId))
     _revealRaceId = completedRaceIds[completedRaceIds.length - 1];
@@ -1121,7 +1148,7 @@ function renderReplayChart(lb, upToRaceIds) {
 }
 
 function stepReplay(dir, lb) {
-  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  const completedRaceIds = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).map(r => r.id);
   const prevRanks = {};
   if (_replayStep > 0) {
     const prevData = lb.map(p => ({ id: p.id, pts: completedRaceIds.slice(0, _replayStep).reduce((s, id) => s + calcRacePts(p.id, id), 0) }))
@@ -1170,7 +1197,7 @@ function stepReplay(dir, lb) {
 
 function playReplayAuto(lb) {
   clearInterval(_replayTimer);
-  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  const completedRaceIds = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).map(r => r.id);
   _replayStep = 0;
   stepReplay(0, lb);
   _replayTimer = setInterval(() => {
@@ -1180,7 +1207,7 @@ function playReplayAuto(lb) {
 }
 
 function renderRaceReplay(lb) {
-  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  const completedRaceIds = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).map(r => r.id);
   if (completedRaceIds.length === 0) return '';
   const upTo = completedRaceIds.slice(0, _replayStep);
   return `
@@ -1223,7 +1250,7 @@ function fireConfetti() {
 // Builds <option> list grouped by team for driver selects
 function driverOptions(selectedId) {
   // Build last-race position hints
-  const doneIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  const doneIds = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).map(r => r.id);
   const lastRes = doneIds.length > 0 ? S.results[doneIds[doneIds.length - 1]] : null;
   const lastPos = {};
   if (lastRes?.race) {
@@ -1282,7 +1309,7 @@ function carSvg(color) {
 }
 
 function renderBarChart(mode, lb) {
-  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  const completedRaceIds = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).map(r => r.id);
 
   if (mode === 'race' && !_animRaceId) return '<div style="color:var(--muted);padding:16px 0">No race results yet — enter results first.</div>';
   if (lb.length === 0) return '<div style="color:var(--muted);padding:16px 0">No participants yet.</div>';
@@ -1326,7 +1353,7 @@ function replayAnims(mode) {
 }
 
 function renderAnimations(lb) {
-  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  const completedRaceIds = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).map(r => r.id);
 
   if (!_animRaceId || !completedRaceIds.includes(_animRaceId))
     _animRaceId = completedRaceIds[completedRaceIds.length - 1] ?? null;
@@ -1359,7 +1386,7 @@ function renderAnimations(lb) {
 }
 
 function renderProgressionChart(lb) {
-  const completedRaces = RACES.filter(r => S.results[r.id]);
+  const completedRaces = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]);
   if (completedRaces.length === 0 || lb.length === 0) return '';
 
   const W = 900, H = 320;
@@ -1470,7 +1497,7 @@ function renderProgressionChart(lb) {
 
 function renderHeadToHead(lb) {
   if (lb.length < 2) return '';
-  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  const completedRaceIds = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).map(r => r.id);
   if (completedRaceIds.length === 0) return '';
 
   const parts = [...lb].sort((a, b) => a.name.localeCompare(b.name));
@@ -1620,7 +1647,7 @@ function renderDashboard() {
     ${renderLastRaceHighlight(lb, completedRaceIds)}
 
     ${done > 0 ? (() => {
-      const completedRaces = RACES.filter(r => S.results[r.id]).slice(-8);
+      const completedRaces = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).slice(-8);
       return `
         <div class="card">
           <div class="card-title">Race-by-Race Points ${done > 8 ? '(last 8 races)' : ''}</div>
@@ -1728,8 +1755,9 @@ function renderPredictions(raceId) {
   const race = raceById(_predRaceId);
   const res  = S.results[_predRaceId];
   const locked = !!S.locked[_predRaceId];
+  const isCancelled = !!S.cancelled?.[_predRaceId];
   const deadlinePassed = isPastDeadline(_predRaceId);
-  const effectiveLocked = locked || deadlinePassed;
+  const effectiveLocked = locked || deadlinePassed || isCancelled;
   const dl = deadlineLabel(_predRaceId);
   const hasParticipants = S.participants.length > 0;
 
@@ -1738,20 +1766,26 @@ function renderPredictions(raceId) {
     return pred?.race?.p1;
   }).length;
 
+  const prid = prevRaceId(_predRaceId);
+  const nrid = nextRaceId(_predRaceId);
+
   el.innerHTML = `
     <!-- Race title (sticky) -->
-    <div class="pred-race-title">Race ${_predRaceId}: ${race.name}</div>
+    <div class="pred-race-title">Race ${_predRaceId}: ${race.name}${isCancelled ? ' <span class="badge badge-cancelled" style="font-size:12px;vertical-align:middle">Cancelled</span>' : ''}</div>
 
     <div class="sec-hdr">
       <h2 class="sec-title">Predictions</h2>
       <div class="sec-actions">
-        ${effectiveLocked
+        ${isCancelled
+          ? `<span class="badge badge-cancelled">🚫 Cancelled</span>
+             <button class="btn btn-ghost btn-sm" onclick="toggleCancelled(${_predRaceId})">↩ Reinstate</button>`
+          : effectiveLocked
           ? `${deadlinePassed && !locked ? '<span class="badge badge-locked">⏰ Deadline Passed</span>' : '<span class="badge badge-locked">🔒 Locked</span>'}
              <button class="btn btn-ghost btn-sm" onclick="toggleLock(${_predRaceId})">${locked ? '🔓 Unlock' : '🔒 Lock'}</button>`
           : `<button class="btn btn-ghost btn-sm" onclick="toggleLock(${_predRaceId})">🔒 Lock Predictions</button>`}
-        ${hasParticipants && !effectiveLocked
+        ${!isCancelled && hasParticipants && !effectiveLocked
           ? `<button class="btn btn-primary" onclick="openPredictionsModal(${_predRaceId})">✏ Enter Predictions</button>`
-          : hasParticipants && effectiveLocked
+          : !isCancelled && hasParticipants && effectiveLocked
           ? `<button class="btn btn-ghost btn-sm" onclick="openPredictionsModal(${_predRaceId})">👁 View Predictions</button>`
           : ''}
       </div>
@@ -1763,7 +1797,7 @@ function renderPredictions(raceId) {
         <div style="flex:1;min-width:200px">
           <label class="fl">Select Race</label>
           <select class="fs" onchange="renderPredictions(+this.value)">
-            ${RACES.map(r => `<option value="${r.id}" ${r.id===_predRaceId?'selected':''}>Round ${r.id}: ${r.name}</option>`).join('')}
+            ${RACES.map(r => `<option value="${r.id}" ${r.id===_predRaceId?'selected':''}>${S.cancelled?.[r.id]?'🚫 ':''}Round ${r.id}: ${r.name}</option>`).join('')}
           </select>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
@@ -1792,7 +1826,14 @@ function renderPredictions(raceId) {
       </div>
     </div>
 
-    ${!hasParticipants ? `
+    ${isCancelled ? `
+      <div class="empty">
+        <span class="empty-icon">🚫</span>
+        <div class="empty-title">${esc(race.name)} has been cancelled</div>
+        <div class="empty-sub">This race does not count towards the standings. Predictions are preserved but no points will be awarded.</div>
+        <button class="btn btn-ghost btn-sm" onclick="toggleCancelled(${_predRaceId})">↩ Reinstate Race</button>
+      </div>
+    ` : !hasParticipants ? `
       <div class="empty">
         <span class="empty-icon">🔮</span>
         <div class="empty-title">No participants yet</div>
@@ -1805,10 +1846,10 @@ function renderPredictions(raceId) {
     `}
 
     <div class="pred-race-nav">
-      <button class="btn btn-ghost" onclick="renderPredictions(${_predRaceId - 1})"
-        ${_predRaceId <= 1 ? 'disabled style="opacity:.3"' : ''}>◀ Prev Race</button>
-      <button class="btn btn-ghost" onclick="renderPredictions(${_predRaceId + 1})"
-        ${_predRaceId >= RACES.length ? 'disabled style="opacity:.3"' : ''}>Next Race ▶</button>
+      <button class="btn btn-ghost" onclick="renderPredictions(${prid})"
+        ${!prid ? 'disabled style="opacity:.3"' : ''}>◀ Prev Race</button>
+      <button class="btn btn-ghost" onclick="renderPredictions(${nrid})"
+        ${!nrid ? 'disabled style="opacity:.3"' : ''}>Next Race ▶</button>
     </div>
   `;
 }
@@ -2173,28 +2214,42 @@ function renderResults(raceId) {
   const el   = document.getElementById('tab-results');
   const race = raceById(_resRaceId);
   const res  = S.results[_resRaceId];
-  const done = RACES.filter(r => S.results[r.id]);
+  const done = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]);
+  const isCancelled = !!S.cancelled?.[_resRaceId];
+  const prid = prevRaceId(_resRaceId);
+  const nrid = nextRaceId(_resRaceId);
 
   el.innerHTML = `
     <!-- Race title (sticky) -->
-    <div class="pred-race-title">Race ${_resRaceId}: ${race.name}</div>
+    <div class="pred-race-title">Race ${_resRaceId}: ${race.name}${isCancelled ? ' <span class="badge badge-cancelled" style="font-size:12px;vertical-align:middle">Cancelled</span>' : ''}</div>
 
     <div class="sec-hdr">
       <h2 class="sec-title">Race Results</h2>
-      <button class="btn btn-primary" onclick="openResultsModal(${_resRaceId})">
-        ${res ? '✏ Edit Results' : '+ Enter Results'}
-      </button>
+      <div class="sec-actions">
+        ${isCancelled
+          ? `<span class="badge badge-cancelled">🚫 Cancelled</span>
+             <button class="btn btn-ghost btn-sm" onclick="toggleCancelled(${_resRaceId})">↩ Reinstate</button>`
+          : `<button class="btn btn-ghost btn-sm" onclick="toggleCancelled(${_resRaceId})">🚫 Cancel Race</button>
+             <button class="btn btn-primary" onclick="openResultsModal(${_resRaceId})">${res ? '✏ Edit Results' : '+ Enter Results'}</button>`}
+      </div>
     </div>
 
     <!-- Race selector -->
     <div class="card" style="margin-bottom:16px">
       <label class="fl">Select Race</label>
       <select class="fs" onchange="renderResults(+this.value)">
-        ${RACES.map(r => `<option value="${r.id}" ${r.id===_resRaceId?'selected':''}>Round ${r.id}: ${r.name}${S.results[r.id]?' ✓':''}</option>`).join('')}
+        ${RACES.map(r => `<option value="${r.id}" ${r.id===_resRaceId?'selected':''}>${S.cancelled?.[r.id]?'🚫 ':''}Round ${r.id}: ${r.name}${S.results[r.id]?' ✓':''}</option>`).join('')}
       </select>
     </div>
 
-    ${res ? `
+    ${isCancelled ? `
+      <div class="empty">
+        <span class="empty-icon">🚫</span>
+        <div class="empty-title">${esc(race.name)} has been cancelled</div>
+        <div class="empty-sub">This race does not count towards the standings. No points will be awarded.</div>
+        <button class="btn btn-ghost btn-sm" onclick="toggleCancelled(${_resRaceId})">↩ Reinstate Race</button>
+      </div>
+    ` : res ? `
       <!-- Show entered results -->
       ${buildResultsDisplay(_resRaceId)}
     ` : `
@@ -2242,10 +2297,10 @@ function renderResults(raceId) {
     ` : ''}
 
     <div class="pred-race-nav">
-      <button class="btn btn-ghost" onclick="renderResults(${_resRaceId - 1})"
-        ${_resRaceId <= 1 ? 'disabled style="opacity:.3"' : ''}>◀ Prev Race</button>
-      <button class="btn btn-ghost" onclick="renderResults(${_resRaceId + 1})"
-        ${_resRaceId >= RACES.length ? 'disabled style="opacity:.3"' : ''}>Next Race ▶</button>
+      <button class="btn btn-ghost" onclick="renderResults(${prid})"
+        ${!prid ? 'disabled style="opacity:.3"' : ''}>◀ Prev Race</button>
+      <button class="btn btn-ghost" onclick="renderResults(${nrid})"
+        ${!nrid ? 'disabled style="opacity:.3"' : ''}>Next Race ▶</button>
     </div>
   `;
 }
@@ -2334,22 +2389,23 @@ function renderCalendar() {
     </div>
     <div class="cal-grid">
       ${RACES.map(race => {
-        const isDone = !!S.results[race.id];
+        const isDone = !!S.results[race.id] && !S.cancelled?.[race.id];
+        const isCancelled = !!S.cancelled?.[race.id];
         const isNext = nr && nr.id === race.id;
         const winner = S.results[race.id]?.race?.p1 ? driverById(S.results[race.id].race.p1) : null;
         return `
-          <div class="race-card ${isDone?'done':''} ${isNext?'nxt':''}"
+          <div class="race-card ${isDone?'done':''} ${isNext?'nxt':''} ${isCancelled?'cancelled':''}"
                onclick="switchTab('predictions');renderPredictions(${race.id})">
             <div class="race-rnd">Round ${race.id}${race.sprint?' · <span style="color:var(--red)">Sprint</span>':''}</div>
             <div class="race-nm">${esc(race.name)}</div>
             <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${race.circuit}</div>
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span style="font-size:11px;color:var(--muted)">${fmtDate(race.date)}</span>
-              <span class="badge ${isDone?'badge-done':isNext?'badge-next':'badge-upcoming'}">
-                ${isDone?'✓ Done':isNext?'Next':'Upcoming'}
+              <span class="badge ${isCancelled?'badge-cancelled':isDone?'badge-done':isNext?'badge-next':'badge-upcoming'}">
+                ${isCancelled?'🚫 Cancelled':isDone?'✓ Done':isNext?'Next':'Upcoming'}
               </span>
             </div>
-            ${isDone && winner ? `
+            ${!isCancelled && isDone && winner ? `
               <div style="margin-top:7px;padding-top:7px;border-top:1px solid var(--border);font-size:11px;color:var(--muted2)">
                 🏆 ${esc(winner.name)}
               </div>
