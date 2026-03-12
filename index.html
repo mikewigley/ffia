@@ -726,6 +726,7 @@ function initFirebase() {
         try { localStorage.setItem('f1fl26v1', JSON.stringify(S)); } catch(_) {}
         { const _hn = document.getElementById('hdr-name'); if (_hn) _hn.textContent = S.leagueName; }
         renderTab(currentTab());
+        updateIdentityUI();
       }
       syncStatus('synced');
     }, () => syncStatus('error'));
@@ -983,6 +984,7 @@ function renderTab(tab) {
 function reRenderActive() {
   const a = document.querySelector('.nav-tab.active');
   if (a) renderTab(a.dataset.tab);
+  updateIdentityUI();
 }
 
 function openModal(html, wide = false) {
@@ -1981,7 +1983,7 @@ function renderPredictions(raceId) {
           : effectiveLocked
           ? `${deadlinePassed && !locked ? '<span class="badge badge-locked">⏰ Deadline Passed</span>' : '<span class="badge badge-locked">🔒 Locked</span>'}
              <button class="btn btn-ghost btn-sm" onclick="toggleLock(${_predRaceId})">${locked ? '🔓 Unlock' : '🔒 Lock'}</button>`
-          : ''}
+          : `<button class="btn btn-ghost btn-sm" onclick="toggleLock(${_predRaceId})">🔒 Lock Predictions</button>`}
         ${!isCancelled && hasParticipants && effectiveLocked
           ? `<button class="btn btn-ghost btn-sm" onclick="openPredictionsModal(${_predRaceId})">👁 View Predictions</button>`
           : ''}
