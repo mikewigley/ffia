@@ -273,15 +273,15 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
   .nav { position: fixed !important; top: auto !important; bottom: 0; left: 0; right: 0;
          border-bottom: none; border-top: 1px solid var(--border); z-index: 200; }
   .nav-inner { justify-content: space-around; padding: 0; gap: 0; }
-  .nav-tab { flex: 1; flex-direction: column; padding: 7px 2px 10px; font-size: 10px;
+  .nav-tab { flex: 1; flex-direction: column; padding: 7px 2px 10px;
              gap: 2px; border-bottom: none; border-top: 3px solid transparent; }
   .nav-tab.active { border-top-color: var(--red); border-bottom-color: transparent; }
   .nav-tab .ni { font-size: 20px; }
-  .nav-tab span:not(.ni) { display: block !important; }
+  .nav-tab span:not(.ni) { display: block !important; white-space: nowrap; overflow: hidden; font-size: 9px; }
   .main { padding-bottom: 90px; }
-  .pred-race-nav { position: fixed !important; bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important; left: 0; right: 0; z-index: 201; border-radius: 0 !important; }
-  #tab-predictions { padding-bottom: 130px; }
-  #tab-results { padding-bottom: 130px; }
+  .pred-race-nav { position: fixed !important; bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important; left: 0; right: 0; z-index: 201; border-radius: 0 !important; }
+  #tab-predictions { padding-bottom: 140px; }
+  #tab-results { padding-bottom: 140px; }
   .pred-race-title { top: 62px; }
   .stats-row { grid-template-columns: repeat(2,1fr); }
   .header-title { font-size: 16px; }
