@@ -248,12 +248,94 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
-  .nav-tab span:not(.ni) { display: none; }
-  .nav-tab { padding: 12px 13px; }
+  .nav { position: fixed !important; top: auto !important; bottom: 0; left: 0; right: 0;
+         border-bottom: none; border-top: 1px solid var(--border); z-index: 200; }
+  .nav-inner { justify-content: space-around; padding: 0; gap: 0; }
+  .nav-tab { flex: 1; flex-direction: column; padding: 7px 2px 10px; font-size: 10px;
+             gap: 2px; border-bottom: none; border-top: 3px solid transparent; }
+  .nav-tab.active { border-top-color: var(--red); border-bottom-color: transparent; }
+  .nav-tab .ni { font-size: 20px; }
+  .nav-tab span:not(.ni) { display: block !important; }
+  .main { padding-bottom: 90px; }
   .stats-row { grid-template-columns: repeat(2,1fr); }
   .header-title { font-size: 16px; }
   .scoring-grid { grid-template-columns: 1fr; }
 }
+
+/* ── LIGHT MODE ── */
+body.light {
+  --bg: #f3f3f3; --card: #ffffff; --card2: #f0eeee;
+  --border: #e0e0e0; --border2: #cccccc;
+  --text: #111111; --muted: #777777; --muted2: #444444;
+}
+body.light .header   { background: #cc0600; }
+body.light .nav      { background: #ebebeb; border-bottom-color: #d8d8d8; }
+body.light .nav-tab  { color: #666; }
+body.light .nav-tab:hover { background: rgba(0,0,0,.06); color: #111; }
+body.light .toast    { background: #fff; color: #111; }
+body.light .overlay  { background: rgba(0,0,0,.45); }
+body.light .modal    { background: #fff; color: #111; }
+body.light .btn-ghost { background: rgba(0,0,0,.07); color: #111; border-color: #ccc; }
+body.light .btn-ghost:hover { background: rgba(0,0,0,.12); }
+body.light ::-webkit-scrollbar-thumb { background: #ccc; }
+
+/* ── STICKY PRED COL ── */
+.pred-sticky { position: sticky; left: 0; background: var(--card); z-index: 3;
+               border-right: 1px solid var(--border2); }
+
+/* ── COLLAPSIBLE SESSION ── */
+.sess-toggle { background: none; border: none; cursor: pointer; color: var(--muted);
+               font-size: 13px; margin-left: 8px; padding: 0 4px; line-height: 1;
+               font-family: inherit; transition: transform .2s; }
+
+/* ── PODIUM ── */
+.podium-wrap  { display: flex; justify-content: center; align-items: flex-end;
+                gap: 10px; padding: 4px 10px 0; }
+.podium-col   { display: flex; flex-direction: column; align-items: center; gap: 5px;
+                flex: 1; max-width: 160px; }
+.podium-name  { font-size: 13px; font-weight: 700; text-align: center;
+                max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.podium-pts   { font-size: 11px; color: var(--muted2); }
+.podium-block { width: 100%; border-radius: 8px 8px 0 0; display: flex;
+                align-items: center; justify-content: center; font-size: 28px; }
+.podium-p1    { height: 90px; background: linear-gradient(to top,rgba(255,215,0,.2),rgba(255,215,0,.05)); border: 1px solid rgba(255,215,0,.4); }
+.podium-p2    { height: 65px; background: linear-gradient(to top,rgba(192,192,192,.2),rgba(192,192,192,.05)); border: 1px solid rgba(192,192,192,.35); }
+.podium-p3    { height: 48px; background: linear-gradient(to top,rgba(205,127,50,.2),rgba(205,127,50,.05)); border: 1px solid rgba(205,127,50,.35); }
+
+/* ── PODIUM REVEAL ANIMATION ── */
+@keyframes riseBlock { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.reveal-col   { display: flex; flex-direction: column; align-items: center; gap: 8px;
+                flex: 1; max-width: 200px; }
+.reveal-name  { font-size: 13px; font-weight: 700; text-align: center; }
+.reveal-pts   { font-size: 12px; color: var(--muted2); }
+.reveal-block { width: 100%; border-radius: 8px 8px 0 0; display: flex;
+                align-items: center; justify-content: center; font-size: 28px;
+                transform-origin: bottom;
+                animation: riseBlock 1.2s cubic-bezier(.22,.8,.22,1) forwards; }
+.reveal-wrap  { display: flex; justify-content: center; align-items: flex-end;
+                gap: 12px; min-height: 180px; padding: 0 10px; }
+
+/* ── CONFETTI ── */
+@keyframes confFall { 0% { transform: translateY(-10px) rotate(0deg); opacity:1; }
+  100% { transform: translateY(100vh) rotate(540deg); opacity:0; } }
+.confetti-piece { position: fixed; width: 9px; height: 14px; top: 0;
+                  z-index: 9999; border-radius: 2px; pointer-events: none;
+                  animation: confFall linear forwards; }
+
+/* ── ACHIEVEMENT BADGES ── */
+.ach-badge    { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px;
+                border-radius: 10px; font-size: 10px; font-weight: 700;
+                margin-left: 4px; cursor: default; white-space: nowrap; }
+.ach-hatrick  { background: rgba(0,170,255,.15); color: #00aaff; border: 1px solid rgba(0,170,255,.3); }
+.ach-pole     { background: rgba(255,215,0,.15); color: var(--gold); border: 1px solid rgba(255,215,0,.3); }
+.ach-comeback { background: rgba(0,216,86,.15); color: var(--green); border: 1px solid rgba(0,216,86,.3); }
+
+/* ── OVERTAKE FLASH ── */
+@keyframes overtakeFlash { 0%,100%{filter:brightness(1)} 50%{filter:brightness(2.5) drop-shadow(0 0 6px gold)} }
+.overtake-flash { animation: overtakeFlash .45s ease 2; }
+
+/* ── SPARKLINE ── */
+.sparkline { display: inline-block; vertical-align: middle; margin-left: 6px; opacity: .85; }
 </style>
 </head>
 <body>
@@ -269,6 +351,7 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
         </div>
       </div>
       <button class="btn btn-ghost btn-sm" onclick="openSettings()">⚙ Settings</button>
+      <button class="btn btn-ghost btn-sm" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
       <span id="sync-status" style="font-size:11px;color:var(--muted);white-space:nowrap"></span>
     </div>
   </header>
@@ -807,15 +890,328 @@ function closeModal() {
   document.getElementById('overlay').classList.remove('open');
 }
 
+// ── THEME ──────────────────────────────────────────────────────────
+function toggleTheme() {
+  const light = document.body.classList.toggle('light');
+  document.getElementById('theme-btn').textContent = light ? '☀️' : '🌙';
+  localStorage.setItem('ffia_theme', light ? 'light' : 'dark');
+}
+(function initTheme() {
+  if (localStorage.getItem('ffia_theme') === 'light') {
+    document.body.classList.add('light');
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('theme-btn');
+      if (btn) btn.textContent = '☀️';
+    });
+  }
+})();
+
+// ── SPARKLINE ──────────────────────────────────────────────────────
+function sparklineSvg(p, completedRaceIds) {
+  if (completedRaceIds.length < 2) return '';
+  const pts = completedRaceIds.map(id => calcRacePts(p.id, id));
+  const minV = Math.min(...pts), maxV = Math.max(...pts);
+  const range = maxV - minV || 1;
+  const W = 52, H = 18;
+  const points = pts.map((v, i) => {
+    const x = (i / (pts.length - 1)) * W;
+    const y = H - ((v - minV) / range) * H;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const color = pColor(p);
+  return `<svg class="sparkline" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>
+    <circle cx="${(W).toFixed(1)}" cy="${(H - ((pts[pts.length-1]-minV)/range)*H).toFixed(1)}"
+            r="2.5" fill="${color}"/>
+  </svg>`;
+}
+
+// ── ACHIEVEMENTS ───────────────────────────────────────────────────
+function computeAchievements(lb, completedRaceIds) {
+  const result = {};
+  lb.forEach(p => { result[p.id] = []; });
+  if (completedRaceIds.length === 0) return result;
+
+  const lastId = completedRaceIds[completedRaceIds.length - 1];
+
+  // 🏆 Pole Position: highest points in most recent race
+  const lastPts = lb.map(p => ({ id: p.id, pts: calcRacePts(p.id, lastId) }));
+  const maxLastPts = Math.max(...lastPts.map(x => x.pts));
+  if (maxLastPts > 0) lastPts.filter(x => x.pts === maxLastPts).forEach(x => result[x.id].push('pole'));
+
+  // 🚀 Comeback King: biggest positive rank change in last race
+  if (completedRaceIds.length >= 2) {
+    const prevIds = completedRaceIds.slice(0, -1);
+    const prevLb = [...lb].map(p => ({ id: p.id, total: prevIds.reduce((s, id) => s + calcRacePts(p.id, id), 0) }))
+      .sort((a, b) => b.total - a.total);
+    const prevRank = {};
+    prevLb.forEach((p, i) => { prevRank[p.id] = i + 1; });
+    let bestGain = 0;
+    lb.forEach((p, i) => {
+      const gain = (prevRank[p.id] || lb.length) - (i + 1);
+      if (gain > bestGain) bestGain = gain;
+    });
+    if (bestGain > 0) {
+      lb.forEach((p, i) => {
+        if ((prevRank[p.id] || lb.length) - (i + 1) === bestGain) result[p.id].push('comeback');
+      });
+    }
+  }
+
+  // 🎯 Hat Trick: ≥ 3 correct predictions in each of the last 3 races
+  if (completedRaceIds.length >= 3) {
+    const last3 = completedRaceIds.slice(-3);
+    lb.forEach(p => {
+      const allHot = last3.every(id => predStats(p.id, id).correct >= 3);
+      if (allHot) result[p.id].push('hatrick');
+    });
+  }
+
+  return result;
+}
+
+// ── PODIUM CARD ────────────────────────────────────────────────────
+function renderPodium(lb) {
+  if (lb.length < 1) return '';
+  const p1 = lb[0], p2 = lb[1] || null, p3 = lb[2] || null;
+  const col = (p, cls, medal) => p ? `
+    <div class="podium-col">
+      <div class="podium-name" style="color:${pColor(p)}">${esc(p.name)}</div>
+      <div class="podium-pts">${p.total} pts</div>
+      <div class="podium-block ${cls}">${medal}</div>
+    </div>` : `<div class="podium-col"><div class="podium-block ${cls}" style="opacity:.2">${medal}</div></div>`;
+  return `<div class="podium-wrap" style="margin-bottom:20px">
+    ${col(p2, 'podium-p2', '🥈')}
+    ${col(p1, 'podium-p1', '🥇')}
+    ${col(p3, 'podium-p3', '🥉')}
+  </div>`;
+}
+
+// ── LAST RACE HIGHLIGHT ────────────────────────────────────────────
+function renderLastRaceHighlight(lb, completedRaceIds) {
+  if (completedRaceIds.length === 0 || lb.length === 0) return '';
+  const lastId = completedRaceIds[completedRaceIds.length - 1];
+  const race = raceById(lastId);
+  const scored = lb.map(p => ({ ...p, rpts: calcRacePts(p.id, lastId) })).sort((a,b) => b.rpts - a.rpts);
+  const winner = scored[0];
+  if (winner.rpts === 0) return '';
+  return `
+    <div class="card" style="background:linear-gradient(135deg,rgba(225,6,0,.08),rgba(255,215,0,.05));border-color:rgba(225,6,0,.25)">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="font-size:36px">🏆</div>
+        <div style="flex:1">
+          <div class="card-title" style="margin-bottom:4px">Last Race Winner — ${esc(race.name)}</div>
+          <div style="font-size:20px;font-weight:800;color:${pColor(winner)}">${esc(winner.name)}</div>
+          <div style="font-size:13px;color:var(--muted2);margin-top:2px">${winner.rpts} points scored</div>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          ${scored.slice(0,4).map((p,i) => `
+            <div style="text-align:center">
+              <div style="font-size:18px">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'4️⃣'}</div>
+              <div style="font-size:11px;font-weight:700;color:${pColor(p)}">${esc(p.name.split(' ')[0])}</div>
+              <div style="font-size:13px;font-weight:800">${p.rpts}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── PODIUM REVEAL ANIMATION ────────────────────────────────────────
+let _revealRaceId = null;
+function renderPodiumReveal(lb) {
+  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  if (completedRaceIds.length === 0) return '';
+  if (!_revealRaceId || !completedRaceIds.includes(_revealRaceId))
+    _revealRaceId = completedRaceIds[completedRaceIds.length - 1];
+
+  const scored = lb.map(p => ({ ...p, rpts: calcRacePts(p.id, _revealRaceId) }))
+    .sort((a, b) => b.rpts - a.rpts);
+  const top3 = scored.slice(0, 3);
+  const maxPts = Math.max(...top3.map(p => Math.abs(p.rpts)), 1);
+
+  const heights = [150, 110, 80];
+  const medals  = ['🥇','🥈','🥉'];
+  const order   = [1, 0, 2]; // P2 left, P1 centre, P3 right
+
+  const cols = order.map(idx => {
+    const p = top3[idx];
+    if (!p) return '<div class="reveal-col"></div>';
+    const h = heights[idx];
+    const delay = [0.6, 0.2, 1.0][idx];
+    const color = pColor(p);
+    return `
+      <div class="reveal-col">
+        <div class="reveal-name" style="color:${color}">${esc(p.name)}</div>
+        <div class="reveal-pts">${p.rpts} pts</div>
+        <div class="reveal-block" style="height:${h}px;background:linear-gradient(to top,${color}44,${color}11);border:1px solid ${color}66;animation-delay:${delay}s">
+          ${medals[idx]}
+        </div>
+      </div>`;
+  });
+
+  return `
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+        <div class="card-title" style="margin:0;flex:1">Podium Reveal</div>
+        <select class="fs" style="max-width:280px" onchange="_revealRaceId=+this.value;renderDashboard()">
+          ${completedRaceIds.map(id => {
+            const r = raceById(id);
+            return `<option value="${id}" ${id===_revealRaceId?'selected':''}>Round ${id}: ${r.name}</option>`;
+          }).join('')}
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="_revealRaceId=_revealRaceId;renderDashboard()">↺ Replay</button>
+      </div>
+      <div class="reveal-wrap">${cols.join('')}</div>
+    </div>`;
+}
+
+// ── RACE-BY-RACE REPLAY ────────────────────────────────────────────
+let _replayStep = 0;
+let _replayTimer = null;
+
+function renderReplayChart(lb, upToRaceIds) {
+  if (upToRaceIds.length === 0) return '<div style="color:var(--muted);padding:12px 0">No races completed yet.</div>';
+  const data = lb.map(p => ({ ...p, pts: upToRaceIds.reduce((s, id) => s + calcRacePts(p.id, id), 0) }))
+    .sort((a, b) => b.pts - a.pts);
+  const maxPts = Math.max(...data.map(d => d.pts), 1);
+  return `<div class="anim-chart" id="anim-chart-replay">
+    ${data.map((p, i) => {
+      const color = pColor(p);
+      const pct   = (Math.max(0, p.pts) / maxPts * 100).toFixed(1);
+      return `
+        <div class="anim-row" data-replay-pid="${p.id}" data-replay-rank="${i}">
+          <div class="anim-label">${esc(p.name)}</div>
+          <div class="anim-track-wrap">
+            <div class="anim-track">
+              <div class="anim-fill" style="--pct:${pct}%;--clr:${color};width:${pct}%;animation:none;transition:width .6s cubic-bezier(.4,0,.2,1)">
+                <div class="anim-car-wrap">${carSvg(color)}</div>
+              </div>
+            </div>
+          </div>
+          <div class="anim-pts" style="color:${p.pts<0?'#ff7070':color};opacity:1">${p.pts} pts</div>
+        </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function stepReplay(dir, lb) {
+  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  const prevRanks = {};
+  if (_replayStep > 0) {
+    const prevData = lb.map(p => ({ id: p.id, pts: completedRaceIds.slice(0, _replayStep).reduce((s, id) => s + calcRacePts(p.id, id), 0) }))
+      .sort((a, b) => b.pts - a.pts);
+    prevData.forEach((p, i) => { prevRanks[p.id] = i; });
+  }
+
+  _replayStep = Math.max(0, Math.min(completedRaceIds.length, _replayStep + dir));
+  const upTo = completedRaceIds.slice(0, _replayStep);
+  const data  = lb.map(p => ({ ...p, pts: upTo.reduce((s, id) => s + calcRacePts(p.id, id), 0) }))
+    .sort((a, b) => b.pts - a.pts);
+  const maxPts = Math.max(...data.map(d => d.pts), 1);
+
+  const chart = document.getElementById('anim-chart-replay');
+  if (!chart) return;
+
+  // Update bars + detect overtakes
+  data.forEach((p, newRank) => {
+    const row = chart.querySelector(`[data-replay-pid="${p.id}"]`);
+    if (!row) return;
+    const fill = row.querySelector('.anim-fill');
+    const ptsEl = row.querySelector('.anim-pts');
+    const pct   = (Math.max(0, p.pts) / maxPts * 100).toFixed(1);
+    if (fill) { fill.style.setProperty('--pct', pct + '%'); fill.style.width = pct + '%'; }
+    if (ptsEl) ptsEl.textContent = p.pts + ' pts';
+    const wasRank = prevRanks[p.id];
+    if (wasRank != null && wasRank > newRank && _replayStep > 0) {
+      row.classList.remove('overtake-flash');
+      void row.offsetWidth;
+      row.classList.add('overtake-flash');
+      row.addEventListener('animationend', () => row.classList.remove('overtake-flash'), { once: true });
+    }
+  });
+
+  const lbl = document.getElementById('replay-race-label');
+  if (lbl) lbl.textContent = _replayStep === 0 ? 'Start — no races yet'
+    : `After Round ${completedRaceIds[_replayStep-1]}: ${raceById(completedRaceIds[_replayStep-1]).name}`;
+
+  const prevBtn = document.getElementById('replay-prev');
+  const nextBtn = document.getElementById('replay-next');
+  if (prevBtn) prevBtn.disabled = _replayStep === 0;
+  if (nextBtn) nextBtn.disabled = _replayStep >= completedRaceIds.length;
+
+  if (_replayStep === completedRaceIds.length && completedRaceIds.length > 0) fireConfetti();
+}
+
+function playReplayAuto(lb) {
+  clearInterval(_replayTimer);
+  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  _replayStep = 0;
+  stepReplay(0, lb);
+  _replayTimer = setInterval(() => {
+    if (_replayStep >= completedRaceIds.length) { clearInterval(_replayTimer); return; }
+    stepReplay(1, lb);
+  }, 1400);
+}
+
+function renderRaceReplay(lb) {
+  const completedRaceIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  if (completedRaceIds.length === 0) return '';
+  const upTo = completedRaceIds.slice(0, _replayStep);
+  return `
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+        <div class="card-title" style="margin:0;flex:1">Race-by-Race Replay</div>
+        <button class="btn btn-ghost btn-sm" onclick="playReplayAuto(window._replayLb)">▶ Play All</button>
+      </div>
+      <div id="replay-race-label" class="replay-race-label">
+        ${_replayStep === 0 ? 'Press ▶ Play All or use arrows' : `After Round ${completedRaceIds[_replayStep-1]}: ${raceById(completedRaceIds[_replayStep-1]).name}`}
+      </div>
+      ${renderReplayChart(lb, upTo)}
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:16px">
+        <button id="replay-prev" class="btn btn-ghost" onclick="stepReplay(-1,window._replayLb)" ${_replayStep===0?'disabled':''}>◀ Prev Race</button>
+        <button id="replay-next" class="btn btn-ghost" onclick="stepReplay(1,window._replayLb)" ${_replayStep>=completedRaceIds.length?'disabled':''}>Next Race ▶</button>
+      </div>
+    </div>`;
+}
+
+// ── CONFETTI ──────────────────────────────────────────────────────
+function fireConfetti() {
+  const colors = ['#e10600','#ffd700','#00d856','#00aaff','#ff6b35','#b44fd9','#ff4d9e','#ffffff'];
+  for (let i = 0; i < 80; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.background = colors[Math.floor(Math.random() * colors.length)];
+      el.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+      el.style.animationDelay = '0s';
+      el.style.transform = `rotate(${Math.random()*360}deg)`;
+      el.style.width  = (6 + Math.random() * 8) + 'px';
+      el.style.height = (10 + Math.random() * 10) + 'px';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }, i * 30);
+  }
+}
+
 // Builds <option> list grouped by team for driver selects
 function driverOptions(selectedId) {
+  // Build last-race position hints
+  const doneIds = RACES.filter(r => S.results[r.id]).map(r => r.id);
+  const lastRes = doneIds.length > 0 ? S.results[doneIds[doneIds.length - 1]] : null;
+  const lastPos = {};
+  if (lastRes?.race) {
+    RACE_POS.forEach(pos => { const did = lastRes.race[pos]; if (did) lastPos[did] = pos.toUpperCase(); });
+  }
   const teams = [...new Set(DRIVERS.map(d => d.team))];
   return `<option value="">— Select Driver —</option>` +
     teams.map(team => {
       const drv = DRIVERS.filter(d => d.team === team);
-      return `<optgroup label="${esc(team)}">${drv.map(d =>
-        `<option value="${d.id}" ${d.id === selectedId ? 'selected' : ''}>${d.num ? d.num + '. ' : ''}${esc(d.name)}</option>`
-      ).join('')}</optgroup>`;
+      return `<optgroup label="${esc(team)}">${drv.map(d => {
+        const hint = lastPos[d.id] ? ` · ${lastPos[d.id]} last` : '';
+        return `<option value="${d.id}" ${d.id === selectedId ? 'selected' : ''}>${d.num ? d.num + '. ' : ''}${esc(d.name)}${hint}</option>`;
+      }).join('')}</optgroup>`;
     }).join('');
 }
 
@@ -1118,6 +1514,11 @@ function renderDashboard() {
     return `<span style="color:var(--muted);font-size:11px;margin-left:4px">—</span>`;
   };
 
+  // Achievement badges
+  const achievements = computeAchievements(lb, completedRaceIds);
+  // Expose lb for replay callbacks
+  window._replayLb = lb;
+
   el.innerHTML = `
     <div class="stats-row">
       <div class="stat-card">
@@ -1152,6 +1553,7 @@ function renderDashboard() {
           <button class="btn btn-primary" onclick="switchTab('participants')">Add Participants</button>
         </div>
       ` : `
+        ${renderPodium(lb)}
         <div class="tw">
           <table>
             <thead><tr>
@@ -1165,9 +1567,18 @@ function renderDashboard() {
                 const icon = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-weight:700">#${i+1}</span>`;
                 const lastRaceId = completedRaceIds[completedRaceIds.length - 1];
                 const lastPts = lastRaceId ? calcRacePts(p.id, lastRaceId) : null;
+                const achs = achievements[p.id] || [];
+                const achHtml = achs.map(a => ({
+                  pole:     `<span class="ach-badge ach-pole"     title="Top scorer last race">🏆 Pole</span>`,
+                  comeback: `<span class="ach-badge ach-comeback" title="Biggest rank gain last race">🚀 Comeback</span>`,
+                  hatrick:  `<span class="ach-badge ach-hatrick"  title="≥3 correct preds in last 3 races">🎯 Hat Trick</span>`,
+                }[a] || '')).join('');
                 return `<tr>
                   <td style="font-size:17px">${icon}</td>
-                  <td><strong>${esc(p.name)}</strong>${trendHtml(p)}</td>
+                  <td>
+                    <strong>${esc(p.name)}</strong>${trendHtml(p)}${achHtml}
+                    ${sparklineSvg(p, completedRaceIds)}
+                  </td>
                   <td style="text-align:center">
                     <span style="color:var(--green);font-weight:700">${p.correct}</span>
                   </td>
@@ -1180,6 +1591,8 @@ function renderDashboard() {
         </div>
       `}
     </div>
+
+    ${renderLastRaceHighlight(lb, completedRaceIds)}
 
     ${done > 0 ? (() => {
       const completedRaces = RACES.filter(r => S.results[r.id]).slice(-8);
@@ -1212,9 +1625,13 @@ function renderDashboard() {
       `;
     })() : ''}
 
-    ${lb.length >= 2 ? renderHeadToHead(lb) : ''}
-
     ${lb.length > 0 ? renderAnimations(lb) : ''}
+
+    ${lb.length > 0 ? renderPodiumReveal(lb) : ''}
+
+    ${lb.length > 0 ? renderRaceReplay(lb) : ''}
+
+    ${lb.length >= 2 ? renderHeadToHead(lb) : ''}
 
     ${renderProgressionChart(lb)}
   `;
@@ -1345,6 +1762,14 @@ function renderPredictions(raceId) {
           </div>` : ''}
         </div>
       </div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn btn-ghost" style="flex:1;font-size:15px;padding:10px"
+          onclick="renderPredictions(${_predRaceId - 1})"
+          ${_predRaceId <= 1 ? 'disabled style="opacity:.3;flex:1;font-size:15px;padding:10px"' : ''}>◀ Prev Race</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:15px;padding:10px"
+          onclick="renderPredictions(${_predRaceId + 1})"
+          ${_predRaceId >= RACES.length ? 'disabled style="opacity:.3;flex:1;font-size:15px;padding:10px"' : ''}>Next Race ▶</button>
+      </div>
     </div>
 
     ${!hasParticipants ? `
@@ -1461,14 +1886,27 @@ function renderPredTable(raceId) {
     return `<td class="pc pc-res">${d ? `<span style="display:inline-flex;align-items:center;gap:3px"><span class="dot" style="background:${tc(d.team)}"></span>${d.abbr}</span>` : '<span style="color:var(--muted)">—</span>'}</td>`;
   };
 
+  // Collapsible session state (global per page load)
+  if (!window._collSess) window._collSess = {};
+  window.toggleSess = function(key) {
+    window._collSess[key] = !window._collSess[key];
+    const collapsed = window._collSess[key];
+    document.querySelectorAll(`[data-sess="${key}"]`).forEach(r => r.style.display = collapsed ? 'none' : '');
+    const arrow = document.getElementById(`sarrow-${key}`);
+    if (arrow) arrow.textContent = collapsed ? '▶' : '▼';
+  };
+
   // Section-header row spanning all columns
-  const secHdr = (icon, label, maxPts) => {
-    const cols = 2 + lb.length; // label col + participants + result
+  const secHdr = (icon, label, maxPts, sessKey) => {
+    const cols = 2 + lb.length;
+    const collapsed = sessKey && window._collSess[sessKey];
+    const arrow = sessKey ? `<button class="sess-toggle" id="sarrow-${sessKey}" onclick="toggleSess('${sessKey}')">${collapsed ? '▶' : '▼'}</button>` : '';
     return `<tr style="background:rgba(225,6,0,.06)">
-      <td colspan="${cols}" style="padding:6px 10px;border-left:3px solid var(--red)">
+      <td colspan="${cols}" class="pred-sticky" style="padding:6px 10px;border-left:3px solid var(--red)">
         <span style="font-size:14px">${icon}</span>
         <strong style="color:var(--red);text-transform:uppercase;letter-spacing:.5px;font-size:11px;margin-left:6px">${label}</strong>
         <span style="font-size:10px;color:var(--muted);margin-left:8px">Max ${maxPts} pts</span>
+        ${arrow}
       </td>
     </tr>`;
   };
@@ -1495,13 +1933,14 @@ function renderPredTable(raceId) {
       }, 0);
     };
 
-    return secHdr(sess.icon, sess.label, maxPts) +
+    return secHdr(sess.icon, sess.label, maxPts, sess.key) +
       sess.positions.map(pos => {
         const rDid = getRes(sess.key, pos);
         const rDrv = rDid ? driverById(rDid) : null;
         const pts  = S.scoring[sess.key]?.[pos] || 0;
-        return `<tr>
-          <td>
+        const hidden = window._collSess?.[sess.key] ? 'display:none' : '';
+        return `<tr data-sess="${sess.key}" style="${hidden}">
+          <td class="pred-sticky">
             <strong style="color:var(--red)">${POS_LABEL[pos]}</strong>
             <span style="font-size:10px;color:var(--muted);margin-left:5px">(${pts}pts)</span>
           </td>
@@ -1514,8 +1953,8 @@ function renderPredTable(raceId) {
         </tr>`;
       }).join('') +
       (res?.[sess.key] ? `
-        <tr style="background:rgba(255,255,255,.02)">
-          <td style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding-left:16px">Position Pts</td>
+        <tr data-sess="${sess.key}" style="${window._collSess?.[sess.key]?'display:none':''}background:rgba(255,255,255,.02)">
+          <td class="pred-sticky" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding-left:16px">Position Pts</td>
           <td></td>
           ${lb.map(p => {
             const pts = exactPts(p.id);
@@ -1523,8 +1962,8 @@ function renderPredTable(raceId) {
           }).join('')}
         </tr>
         ${topNPts ? `
-        <tr style="background:rgba(255,165,0,.04)">
-          <td style="font-size:10px;font-weight:700;color:#ffaa00;text-transform:uppercase;letter-spacing:.5px;padding-left:16px">Top-${sess.positions.length} ~ Bonus <span style="font-size:9px;color:var(--muted)">(${topNPts}pts each)</span></td>
+        <tr data-sess="${sess.key}" style="${window._collSess?.[sess.key]?'display:none':''}background:rgba(255,165,0,.04)">
+          <td class="pred-sticky" style="font-size:10px;font-weight:700;color:#ffaa00;text-transform:uppercase;letter-spacing:.5px;padding-left:16px">Top-${sess.positions.length} ~ Bonus <span style="font-size:9px;color:var(--muted)">(${topNPts}pts each)</span></td>
           <td></td>
           ${lb.map(p => {
             const pts = topNBonus(p.id);
@@ -1536,14 +1975,14 @@ function renderPredTable(raceId) {
   }).join('');
 
   // Build bonus rows
-  const bonusRows = secHdr('⭐', 'Bonus Predictions', bonusMaxPts) + `
-    <tr>
-      <td><strong style="color:var(--red)">Fastest Lap</strong> <span style="font-size:10px;color:var(--muted);margin-left:5px">(${S.scoring.bonus?.fastestLap || 0}pts)</span></td>
+  const bonusRows = secHdr('⭐', 'Bonus Predictions', bonusMaxPts, 'bonus') + `
+    <tr data-sess="bonus" style="${window._collSess?.bonus?'display:none':''}">
+      <td class="pred-sticky"><strong style="color:var(--red)">Fastest Lap</strong> <span style="font-size:10px;color:var(--muted);margin-left:5px">(${S.scoring.bonus?.fastestLap || 0}pts)</span></td>
       ${resDrvCell('fastestLap')}
       ${lb.map(p => bonusDriverCell(p.id, 'fastestLap')).join('')}
     </tr>
-    <tr>
-      <td>
+    <tr data-sess="bonus" style="${window._collSess?.bonus?'display:none':''}">
+      <td class="pred-sticky">
         <strong style="color:var(--red)">${bonusDrv ? esc(bonusDrv.name) : 'Driver'} Finishes</strong>
         <span style="font-size:10px;color:var(--muted);margin-left:5px">(−1pt/pos off)</span>
       </td>
@@ -1560,14 +1999,14 @@ function renderPredTable(raceId) {
         return `<td class="${cls}">${label}</td>`;
       }).join('')}
     </tr>
-    <tr>
-      <td><strong style="color:var(--red)">Driver of the Day</strong> <span style="font-size:10px;color:var(--muted);margin-left:5px">(${S.scoring.bonus?.dotd || 0}pts)</span></td>
+    <tr data-sess="bonus" style="${window._collSess?.bonus?'display:none':''}">
+      <td class="pred-sticky"><strong style="color:var(--red)">Driver of the Day</strong> <span style="font-size:10px;color:var(--muted);margin-left:5px">(${S.scoring.bonus?.dotd || 0}pts)</span></td>
       ${resDrvCell('dotd')}
       ${lb.map(p => bonusDriverCell(p.id, 'dotd')).join('')}
     </tr>
     ${res?.bonus ? `
-      <tr>
-        <td style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Points</td>
+      <tr data-sess="bonus" style="${window._collSess?.bonus?'display:none':''}">
+        <td class="pred-sticky" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Points</td>
         <td></td>
         ${lb.map(p => {
           const pb = S.predictions[raceId]?.[p.id]?.bonus || {};
@@ -1584,7 +2023,7 @@ function renderPredTable(raceId) {
 
   const totalRow = res ? `
     <tr style="background:rgba(225,6,0,.08);border-bottom:2px solid var(--border)">
-      <td style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Total Points</td>
+      <td class="pred-sticky" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Total Points</td>
       <td></td>
       ${lb.map(p => {
         const pts = calcRacePts(p.id, raceId);
@@ -1598,7 +2037,7 @@ function renderPredTable(raceId) {
       <div class="tw">
         <table>
           <thead><tr>
-            <th>Prediction</th>
+            <th class="pred-sticky">Prediction</th>
             <th style="text-align:center;min-width:90px;color:var(--gold)">★ Result</th>
             ${lb.map(p => `<th style="text-align:center;min-width:80px">${esc(p.name)}</th>`).join('')}
           </tr></thead>
@@ -2082,7 +2521,8 @@ function renderPredModal() {
       <div class="modal-foot-right">
         <button class="btn btn-ghost" onclick="closeModal();reRenderActive()">Cancel</button>
         ${!locked ? `
-          <button class="btn btn-ghost btn-sm" onclick="copyFromPrevRace()" title="Copy predictions from the previous race">📋 Copy Prev</button>
+          <button class="btn btn-ghost btn-sm" onclick="copyFromPrevRace()" title="Copy predictions from the previous race">📋 Copy Previous</button>
+          <button class="btn btn-danger btn-sm" onclick="clearCurrentPreds()" title="Clear all predictions for this participant">🗑 Clear</button>
           <button class="btn btn-primary" onclick="saveAllPreds()">✓ Done</button>
         ` : ''}
       </div>
@@ -2132,6 +2572,17 @@ function collectCurrentForm() {
     dotd:        dotdEl?.value ? +dotdEl.value : null,
   };
   _pred.buf[p.id] = buf;
+}
+
+function clearCurrentPreds() {
+  const p = S.participants[_pred.idx];
+  const empty = { race:{}, quali:{}, sprintquali:{}, sprint:{}, bonus:{} };
+  _pred.buf[p.id] = JSON.parse(JSON.stringify(empty));
+  if (!S.predictions[_pred.raceId]) S.predictions[_pred.raceId] = {};
+  S.predictions[_pred.raceId][p.id] = JSON.parse(JSON.stringify(empty));
+  save();
+  renderPredModal();
+  toast(`Cleared predictions for ${p.name}`);
 }
 
 function copyFromPrevRace() {
