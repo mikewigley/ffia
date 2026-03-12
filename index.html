@@ -249,6 +249,15 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 
+/* ── PRED RACE NAV ── */
+.pred-race-nav {
+  display: flex; gap: 10px; background: var(--card);
+  border-top: 1px solid var(--border); padding: 10px 20px;
+  position: sticky; bottom: 0; z-index: 100;
+  margin: 16px -20px -24px; border-radius: 0 0 12px 12px;
+}
+.pred-race-nav .btn { flex: 1; font-size: 15px; padding: 10px; }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
   .nav { position: fixed !important; top: auto !important; bottom: 0; left: 0; right: 0;
@@ -260,6 +269,8 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
   .nav-tab .ni { font-size: 20px; }
   .nav-tab span:not(.ni) { display: block !important; }
   .main { padding-bottom: 90px; }
+  .pred-race-nav { position: fixed !important; bottom: 65px !important; left: 0; right: 0; z-index: 150; border-radius: 0 !important; }
+  #tab-predictions { padding-bottom: 66px; }
   .stats-row { grid-template-columns: repeat(2,1fr); }
   .header-title { font-size: 16px; }
   .scoring-grid { grid-template-columns: 1fr; }
@@ -1633,11 +1644,11 @@ function renderDashboard() {
 
     ${lb.length > 0 ? renderPodiumReveal(lb) : ''}
 
-    ${lb.length > 0 ? renderRaceReplay(lb) : ''}
-
     ${lb.length >= 2 ? renderHeadToHead(lb) : ''}
 
     ${renderProgressionChart(lb)}
+
+    ${lb.length > 0 ? renderRaceReplay(lb) : ''}
   `;
 }
 
@@ -1735,6 +1746,9 @@ function renderPredictions(raceId) {
 
     <!-- Race selector -->
     <div class="card" style="margin-bottom:16px">
+      <div style="font-size:20px;font-weight:800;margin-bottom:12px">
+        Race ${_predRaceId}: ${race.name.replace(/ Grand Prix/i, '')}
+      </div>
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="flex:1;min-width:200px">
           <label class="fl">Select Race</label>
@@ -1766,14 +1780,6 @@ function renderPredictions(raceId) {
           </div>` : ''}
         </div>
       </div>
-      <div style="display:flex;gap:10px;margin-top:14px">
-        <button class="btn btn-ghost" style="flex:1;font-size:15px;padding:10px"
-          onclick="renderPredictions(${_predRaceId - 1})"
-          ${_predRaceId <= 1 ? 'disabled style="opacity:.3;flex:1;font-size:15px;padding:10px"' : ''}>◀ Prev Race</button>
-        <button class="btn btn-ghost" style="flex:1;font-size:15px;padding:10px"
-          onclick="renderPredictions(${_predRaceId + 1})"
-          ${_predRaceId >= RACES.length ? 'disabled style="opacity:.3;flex:1;font-size:15px;padding:10px"' : ''}>Next Race ▶</button>
-      </div>
     </div>
 
     ${!hasParticipants ? `
@@ -1787,6 +1793,13 @@ function renderPredictions(raceId) {
       ${renderParticipantCards(_predRaceId)}
       ${renderPredTable(_predRaceId)}
     `}
+
+    <div class="pred-race-nav">
+      <button class="btn btn-ghost" onclick="renderPredictions(${_predRaceId - 1})"
+        ${_predRaceId <= 1 ? 'disabled style="opacity:.3"' : ''}>◀ Prev Race</button>
+      <button class="btn btn-ghost" onclick="renderPredictions(${_predRaceId + 1})"
+        ${_predRaceId >= RACES.length ? 'disabled style="opacity:.3"' : ''}>Next Race ▶</button>
+    </div>
   `;
 }
 
