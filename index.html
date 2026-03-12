@@ -296,40 +296,69 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 
 <!-- Clippy -->
 <div id="clippy-wrap" style="display:none;position:fixed;bottom:24px;right:24px;z-index:3000;display:none;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none">
-  <div id="clippy-bubble" style="pointer-events:auto;background:#fffde7;color:#222;border:2px solid #d4aa00;border-radius:12px;padding:12px 16px;max-width:200px;font-size:13px;font-weight:500;line-height:1.4;position:relative;box-shadow:0 4px 16px rgba(0,0,0,.4)">
-    <button onclick="closeClipy()" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;font-size:15px;color:#888;line-height:1;padding:0">✕</button>
+  <div id="clippy-bubble" style="pointer-events:auto;background:#fffde7;color:#222;border:2px solid #b8a000;border-radius:12px;padding:12px 36px 12px 14px;max-width:210px;font-size:13px;font-weight:500;line-height:1.5;position:relative;box-shadow:0 4px 18px rgba(0,0,0,.45)">
+    <button onclick="closeClipy()" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;font-size:16px;color:#999;line-height:1;padding:0">✕</button>
     It looks like you're entering predictions!<br><br>
     <strong>Do you need help? 😄</strong>
-    <div style="position:absolute;bottom:-10px;right:28px;width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:10px solid #d4aa00"></div>
-    <div style="position:absolute;bottom:-8px;right:29px;width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:9px solid #fffde7"></div>
+    <span id="clippy-extra"></span>
+    <div style="position:absolute;bottom:-10px;right:26px;width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:10px solid #b8a000"></div>
+    <div style="position:absolute;bottom:-8px;right:27px;width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:9px solid #fffde7"></div>
   </div>
-  <svg id="clippy-svg" style="pointer-events:auto;cursor:pointer;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4))" onclick="closeClipy()" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 185" width="72">
+  <!-- Realistic Clippy SVG -->
+  <svg id="clippy-svg" style="pointer-events:auto;cursor:pointer;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))" onclick="closeClipy()" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 210" width="82">
+    <defs>
+      <linearGradient id="clpOuter" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%"   stop-color="#7a7a7a"/>
+        <stop offset="30%"  stop-color="#d8d8d8"/>
+        <stop offset="60%"  stop-color="#a8a8a8"/>
+        <stop offset="100%" stop-color="#686868"/>
+      </linearGradient>
+      <linearGradient id="clpInner" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%"   stop-color="#909090"/>
+        <stop offset="35%"  stop-color="#e8e8e8"/>
+        <stop offset="65%"  stop-color="#b4b4b4"/>
+        <stop offset="100%" stop-color="#787878"/>
+      </linearGradient>
+    </defs>
+    <!-- Outer loop shadow -->
+    <path d="M24,175 L24,40 Q24,8 55,8 Q86,8 86,40 L86,145" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="17" stroke-linecap="round"/>
+    <!-- Inner loop shadow -->
+    <path d="M40,175 L40,55 Q40,33 55,33 Q70,33 70,55 L70,145" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="17" stroke-linecap="round"/>
     <!-- Outer loop -->
-    <path d="M22,158 L22,36 Q22,6 50,6 Q78,6 78,36 L78,128" fill="none" stroke="#c9a800" stroke-width="13" stroke-linecap="round"/>
+    <path d="M22,175 L22,40 Q22,8 55,8 Q88,8 88,40 L88,145" fill="none" stroke="url(#clpOuter)" stroke-width="14" stroke-linecap="round"/>
     <!-- Inner loop -->
-    <path d="M37,158 L37,50 Q37,28 50,28 Q63,28 63,50 L63,128" fill="none" stroke="#c9a800" stroke-width="13" stroke-linecap="round"/>
+    <path d="M38,175 L38,55 Q38,33 55,33 Q72,33 72,55 L72,145" fill="none" stroke="url(#clpInner)" stroke-width="14" stroke-linecap="round"/>
     <!-- Bottom U connector -->
-    <path d="M22,158 Q22,174 29.5,174 Q37,174 37,158" fill="none" stroke="#c9a800" stroke-width="13" stroke-linecap="round"/>
-    <!-- Shine on outer loop -->
-    <path d="M18,100 L18,50 Q18,14 50,14" fill="none" stroke="#f0cc00" stroke-width="4" stroke-linecap="round" opacity=".6"/>
-    <!-- Eye area -->
-    <rect x="28" y="44" width="44" height="36" rx="8" fill="#fffde7" stroke="#c9a800" stroke-width="2"/>
-    <!-- Left eye white -->
-    <ellipse cx="40" cy="62" rx="7" ry="8" fill="white" stroke="#bbb" stroke-width="1"/>
+    <path d="M22,175 Q22,192 30,192 Q38,192 38,175" fill="none" stroke="url(#clpOuter)" stroke-width="14" stroke-linecap="round"/>
+    <!-- Specular highlight -->
+    <path d="M17,140 L17,50 Q17,14 55,14" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="4" stroke-linecap="round"/>
+    <!-- Face plate -->
+    <rect x="30" y="52" width="52" height="52" rx="11" fill="#f0ead0" stroke="#c8b860" stroke-width="1.5"/>
+    <rect x="31" y="53" width="50" height="50" rx="10" fill="url(#faceGrad)" stroke="none"/>
+    <!-- Left eye socket -->
+    <ellipse cx="43" cy="78" rx="9" ry="10" fill="white" stroke="#d0c090" stroke-width="1"/>
+    <!-- Left iris -->
+    <ellipse cx="43" cy="79" rx="6.5" ry="7" fill="#8b6914"/>
     <!-- Left pupil -->
-    <circle cx="41.5" cy="63" r="3.5" fill="#1a1a1a"/>
-    <circle cx="43" cy="61" r="1.2" fill="white"/>
-    <!-- Right eye white -->
-    <ellipse cx="60" cy="62" rx="7" ry="8" fill="white" stroke="#bbb" stroke-width="1"/>
+    <ellipse cx="43" cy="80" rx="4" ry="4.5" fill="#1a1008"/>
+    <!-- Left catchlight -->
+    <ellipse cx="45.5" cy="76.5" rx="2" ry="1.8" fill="rgba(255,255,255,.85)"/>
+    <!-- Right eye socket -->
+    <ellipse cx="67" cy="78" rx="9" ry="10" fill="white" stroke="#d0c090" stroke-width="1"/>
+    <!-- Right iris -->
+    <ellipse cx="67" cy="79" rx="6.5" ry="7" fill="#8b6914"/>
     <!-- Right pupil -->
-    <circle cx="61.5" cy="63" r="3.5" fill="#1a1a1a"/>
-    <circle cx="63" cy="61" r="1.2" fill="white"/>
-    <!-- Left eyebrow (raised, curious) -->
-    <path d="M33,50 Q40,46 47,50" fill="none" stroke="#555" stroke-width="2.5" stroke-linecap="round"/>
-    <!-- Right eyebrow -->
-    <path d="M53,48 Q60,44 67,48" fill="none" stroke="#555" stroke-width="2.5" stroke-linecap="round"/>
-    <!-- Mouth (slight smile) -->
-    <path d="M42,74 Q50,79 58,74" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round"/>
+    <ellipse cx="67" cy="80" rx="4" ry="4.5" fill="#1a1008"/>
+    <!-- Right catchlight -->
+    <ellipse cx="69.5" cy="76.5" rx="2" ry="1.8" fill="rgba(255,255,255,.85)"/>
+    <!-- Left eyebrow (arched, quizzical) -->
+    <path d="M35,62 Q43,56 51,61" fill="none" stroke="#4a3800" stroke-width="3" stroke-linecap="round"/>
+    <!-- Right eyebrow (raised higher for that classic Clippy look) -->
+    <path d="M59,59 Q67,53 75,59" fill="none" stroke="#4a3800" stroke-width="3" stroke-linecap="round"/>
+    <!-- Mouth (friendly smile) -->
+    <path d="M44,94 Q55,101 66,94" fill="none" stroke="#7a6030" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Tiny nose hint -->
+    <path d="M52,87 Q55,90 58,87" fill="none" stroke="#b09050" stroke-width="1.5" stroke-linecap="round"/>
   </svg>
 </div>
 <div class="overlay" id="overlay">
@@ -440,6 +469,8 @@ const DEFAULTS = {
   },
   adminPin: '',
   deadlineHours: 0,
+  clippyEnabled: true,
+  clippyPhrase: 'I predict Stupid Stroll for P1',
   participants: [],
   // predictions[raceId][participantId] = {
   //   race:        { p1: driverId|null, p2, p3, p4, p5 },
@@ -734,10 +765,12 @@ function switchTab(tab) {
   renderTab(tab);
   // Clippy: appear after 1 min on predictions tab
   clearTimeout(_clippyTimer);
-  if (tab === 'predictions' && !_clippyDismissed) {
+  if (tab === 'predictions' && !_clippyDismissed && S.clippyEnabled) {
     _clippyTimer = setTimeout(() => {
+      const extra = (S.clippyPhrase || '').trim();
+      document.getElementById('clippy-extra').innerHTML = extra ? `<br><br><em>${esc(extra)}</em>` : '';
       document.getElementById('clippy-wrap').classList.add('visible');
-    }, 60000);
+    }, 15000);
   } else {
     document.getElementById('clippy-wrap').classList.remove('visible');
   }
@@ -2044,13 +2077,13 @@ function renderPredModal() {
     </div>
     <div class="modal-foot">
       <div style="font-size:12px;color:var(--muted)">
-        ${locked ? '🔒 Predictions locked — view only' : 'Navigate to enter predictions for each participant'}
+        ${locked ? '🔒 Predictions locked — view only' : '✓ Changes saved automatically'}
       </div>
       <div class="modal-foot-right">
-        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-ghost" onclick="closeModal();reRenderActive()">Cancel</button>
         ${!locked ? `
           <button class="btn btn-ghost btn-sm" onclick="copyFromPrevRace()" title="Copy predictions from the previous race">📋 Copy Prev</button>
-          <button class="btn btn-primary" onclick="saveAllPreds()">💾 Save All</button>
+          <button class="btn btn-primary" onclick="saveAllPreds()">✓ Done</button>
         ` : ''}
       </div>
     </div>
@@ -2061,6 +2094,10 @@ function updatePredBuf(session, pos, val) {
   const p = S.participants[_pred.idx];
   if (!_pred.buf[p.id]) _pred.buf[p.id] = { race:{}, quali:{}, sprintquali:{}, sprint:{}, bonus:{} };
   _pred.buf[p.id][session][pos] = val ? +val : null;
+  // Auto-save immediately
+  if (!S.predictions[_pred.raceId]) S.predictions[_pred.raceId] = {};
+  S.predictions[_pred.raceId][p.id] = JSON.parse(JSON.stringify(_pred.buf[p.id]));
+  save();
 }
 
 function collectCurrentForm() {
@@ -2117,6 +2154,14 @@ function copyFromPrevRace() {
 }
 
 function predNav(dir) {
+  collectCurrentForm();
+  // Save the current participant's state before navigating
+  const p = S.participants[_pred.idx];
+  if (p) {
+    if (!S.predictions[_pred.raceId]) S.predictions[_pred.raceId] = {};
+    S.predictions[_pred.raceId][p.id] = JSON.parse(JSON.stringify(_pred.buf[p.id]));
+    save();
+  }
   const newIdx = _pred.idx + dir;
   if (newIdx < 0 || newIdx >= S.participants.length) return;
   _pred.idx = newIdx;
@@ -2147,14 +2192,13 @@ function saveAllPreds() {
     }
   }
 
-  // Commit to state
+  // Final commit of all buffered participants
   if (!S.predictions[_pred.raceId]) S.predictions[_pred.raceId] = {};
   S.participants.forEach(p => {
     S.predictions[_pred.raceId][p.id] = _pred.buf[p.id] || { race:{}, quali:{}, sprintquali:{}, sprint:{}, bonus:{} };
   });
 
   save(); closeModal();
-  toast('Predictions saved!');
   reRenderActive();
 }
 
@@ -2484,6 +2528,23 @@ function openSettings() {
       <div class="sep"></div>
 
       <div style="margin-bottom:12px">
+        <div class="card-title">🖇 Clippy</div>
+        <div class="fg" style="margin-bottom:8px">
+          <label class="fl" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="s-clippy-enabled" ${S.clippyEnabled ? 'checked' : ''}>
+            Enable Clippy (appears after 15s on Predictions)
+          </label>
+        </div>
+        <div class="fg">
+          <label class="fl">Clippy's extra phrase (leave blank to hide)</label>
+          <input class="fi" id="s-clippy-phrase" type="text" value="${esc(S.clippyPhrase || '')}"
+                 maxlength="120" placeholder="e.g. I predict Stupid Stroll for P1">
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div style="margin-bottom:12px">
         <div class="card-title">Admin PIN</div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
           If set, this PIN is required to lock or unlock predictions. Leave blank to allow anyone to lock/unlock.
@@ -2548,6 +2609,12 @@ function saveSettings() {
     const el = document.getElementById(`sc-bonus-${k}`);
     if (el) S.scoring.bonus[k] = Math.max(0, +el.value || 0);
   });
+
+  // Clippy
+  const clippyWasOff = !S.clippyEnabled;
+  S.clippyEnabled = document.getElementById('s-clippy-enabled')?.checked ?? true;
+  S.clippyPhrase  = document.getElementById('s-clippy-phrase')?.value.trim() ?? '';
+  if (S.clippyEnabled && clippyWasOff) _clippyDismissed = false;
 
   // Admin PIN
   const pinEl = document.getElementById('s-admin-pin');
