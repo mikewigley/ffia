@@ -354,18 +354,18 @@ body.light ::-webkit-scrollbar-thumb { background: #ccc; }
 
 /* ── HELICOPTER ── */
 @keyframes heliFlyin {
-  0%   { transform: translateX(150vw); opacity: 1; }
-  75%  { transform: translateX(30px); }
-  88%  { transform: translateX(-12px); }
-  100% { transform: translateX(0px); }
+  0%   { transform: translate(150vw, -60px); opacity: 1; }
+  75%  { transform: translate(30px, -20px); }
+  88%  { transform: translate(-12px, 4px); }
+  100% { transform: translate(0px, 0px); }
 }
 @keyframes heliBob {
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-10px); }
 }
 @keyframes heliFlyout {
-  0%   { transform: translateY(0px); opacity: 1; }
-  100% { transform: translateX(-150vw); opacity: 0; }
+  0%   { transform: translate(0px, 0px); opacity: 1; }
+  100% { transform: translate(-150vw, -40px); opacity: 0; }
 }
 .heli-el { position: fixed; font-size: 88px; z-index: 9998; pointer-events: none;
            transition: opacity 0.4s; }
@@ -1377,8 +1377,8 @@ function fireHelicopter() {
   const p1block = document.getElementById('p1-reveal-block');
   if (!p1block) return;
   const rect = p1block.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2 - 22; // centre heli over block
-  const cy = rect.top - 60;
+  const cx = rect.left + rect.width / 2 - 44; // centre the 88px emoji over the block
+  const cy = rect.top - 82; // bottom of emoji sits just at top of block
 
   const el = document.createElement('div');
   el.className = 'heli-el';
