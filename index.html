@@ -1377,8 +1377,8 @@ function fireHelicopter() {
   const p1block = document.getElementById('p1-reveal-block');
   if (!p1block) return;
   const rect = p1block.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2 - 44; // centre the 88px emoji over the block
-  const cy = rect.top - 82; // bottom of emoji sits just at top of block
+  const cx = rect.right - 60; // land on right side of block so winner name stays visible
+  const cy = rect.top - 115; // bottom of emoji sits just at top of block
 
   const el = document.createElement('div');
   el.className = 'heli-el';
