@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -623,6 +623,7 @@ const DEFAULTS = {
   },
   adminPin: '',
   deadlineHours: 0,
+  raceTimes: {},
   cancelled: {},
   clippyEnabled: true,
   clippyPhrase: 'I predict Stupid Stroll for P1',
@@ -645,6 +646,8 @@ const DEFAULTS = {
   locked: {},
   // lockedP[raceId][participantId] = true — individual participant lock
   lockedP: {},
+  // predSubmitTime[raceId][participantId] = timestamp ms — when predictions last saved
+  predSubmitTime: {},
 };
 
 let S = loadState();
@@ -753,8 +756,9 @@ function currentTab() {
 // DATA HELPERS
 // ═══════════════════════════════════════════════════════════════════
 
-const driverById = id => DRIVERS.find(d => d.id === id);
-const raceById   = id => RACES.find(r => r.id === id);
+const driverById   = id   => DRIVERS.find(d => d.id === id);
+const driverByCode = code => DRIVERS.find(d => d.abbr === (code || '').toUpperCase()) || null;
+const raceById     = id   => RACES.find(r => r.id === id);
 const tc = team  => TEAM_COLORS[team] || '#666';
 const esc = s    => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const uid = ()   => Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -791,24 +795,87 @@ function toggleCancelled(raceId) {
   if (S.adminPin) { requirePin(doToggle); } else { doToggle(); }
 }
 
-function isPastDeadline(raceId) {
-  if (!S.deadlineHours) return false;
+function raceDeadlineMs(raceId) {
   const race = raceById(raceId);
-  if (!race) return false;
-  const deadline = new Date(race.date + 'T12:00:00').getTime() - S.deadlineHours * 3600000;
-  return Date.now() >= deadline;
+  if (!race) return null;
+  const t = S.raceTimes?.[raceId];
+  // Use quali/sprint-quali time for locking (1 min before)
+  const lockTime = t?.q;
+  if (lockTime) {
+    return new Date(`${race.date}T${lockTime}:00`).getTime() - 60000;
+  }
+  if (S.deadlineHours) {
+    return new Date(race.date + 'T12:00:00').getTime() - S.deadlineHours * 3600000;
+  }
+  return null;
+}
+
+function isPastDeadline(raceId) {
+  const ms = raceDeadlineMs(raceId);
+  return ms !== null && Date.now() >= ms;
 }
 
 function deadlineLabel(raceId) {
-  if (!S.deadlineHours) return null;
-  const race = raceById(raceId);
-  if (!race) return null;
-  const deadline = new Date(race.date + 'T12:00:00').getTime() - S.deadlineHours * 3600000;
-  const diff = deadline - Date.now();
+  const ms = raceDeadlineMs(raceId);
+  if (ms === null) return null;
+  const diff = ms - Date.now();
   if (diff <= 0) return { passed: true, text: 'Deadline passed' };
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   return { passed: false, text: h > 0 ? `${h}h ${m}m until deadline` : `${m}m until deadline` };
+}
+
+function fmtCountdown(ms) {
+  if (ms <= 0) return 'now';
+  const d = Math.floor(ms / 86400000);
+  const h = Math.floor((ms % 86400000) / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  return `${m}m ${s}s`;
+}
+
+function startCountdownTimers() {
+  clearInterval(_countdownTimer);
+  _countdownTimer = setInterval(() => {
+    // Dashboard: next race deadline countdown
+    const nrEl = document.getElementById('next-race-countdown');
+    if (nrEl) {
+      const nr = nextRace();
+      if (nr) {
+        const ms = raceDeadlineMs(nr.id);
+        if (ms !== null) {
+          const diff = ms - Date.now();
+          if (diff > 0) {
+            nrEl.textContent = `⏱ Lock in ${fmtCountdown(diff)}`;
+            nrEl.style.color = diff < 3600000 ? '#ff7070' : diff < 7200000 ? 'var(--gold)' : '';
+          } else {
+            nrEl.textContent = 'Predictions locked';
+            nrEl.style.color = 'var(--muted)';
+          }
+        } else {
+          nrEl.textContent = fmtDate(nr.date);
+          nrEl.style.color = '';
+        }
+      }
+    }
+    // Predictions tab: deadline countdown banner
+    const bannerEl = document.getElementById('deadline-countdown');
+    if (bannerEl) {
+      const ms = raceDeadlineMs(_predRaceId);
+      if (ms !== null) {
+        const diff = ms - Date.now();
+        if (diff > 0) {
+          bannerEl.textContent = fmtCountdown(diff);
+        } else {
+          const banner = document.getElementById('deadline-banner');
+          if (banner) banner.remove();
+          renderPredictions();
+        }
+      }
+    }
+  }, 1000);
 }
 
 // Points for one participant in one race
@@ -1231,6 +1298,7 @@ function renderPodiumReveal(lb) {
 // ── RACE-BY-RACE REPLAY ────────────────────────────────────────────
 let _replayStep = 0;
 let _replayTimer = null;
+let _countdownTimer = null;
 
 function renderReplayChart(lb, upToRaceIds) {
   if (upToRaceIds.length === 0) return '<div style="color:var(--muted);padding:12px 0">No races completed yet.</div>';
@@ -1787,7 +1855,7 @@ function renderDashboard() {
       <div class="stat-card">
         <div class="stat-label">Next Race</div>
         <div class="stat-value" style="font-size:16px;line-height:1.2">${nr ? nr.name.replace(' Grand Prix',' GP') : 'Season Complete'}</div>
-        <div class="stat-sub">${nr ? fmtDate(nr.date) : ''}</div>
+        <div class="stat-sub" id="next-race-countdown">${nr ? fmtDate(nr.date) : ''}</div>
       </div>
     </div>
 
@@ -1820,7 +1888,7 @@ function renderDashboard() {
             </tr></thead>
             <tbody>
               ${lb.map((p, i) => {
-                const icon = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-weight:700">#${i+1}</span>`;
+                const icon = i===0?'🥇':i===1?'🥈':i===2?'🥉':i===lb.length-1&&lb.length>3?`<span title="Wooden spoon!" style="color:var(--muted);font-weight:700">#${i+1} 🥄</span>`:`<span style="color:var(--muted);font-weight:700">#${i+1}</span>`;
                 const lastRaceId = completedRaceIds[completedRaceIds.length - 1];
                 const lastPts = lastRaceId ? calcRacePts(p.id, lastRaceId) : null;
                 const achs = achievements[p.id] || [];
@@ -1850,6 +1918,7 @@ function renderDashboard() {
     `}
 
     ${_standingsRevealed ? `
+    ${done > 0 ? (() => { return renderPostRaceSummary(lb, completedRaceIds); })() : ''}
     ${done > 0 ? (() => {
       const completedRaces = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).slice(-8);
       return `
@@ -1887,6 +1956,71 @@ function renderDashboard() {
 
     ${lb.length > 0 ? renderRaceReplay(lb) : ''}
     ` : ''}
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER: POST-RACE SUMMARY CARD
+// ═══════════════════════════════════════════════════════════════════
+
+function renderPostRaceSummary(lb, completedRaceIds) {
+  if (completedRaceIds.length === 0) return '';
+  const lastRaceId = completedRaceIds[completedRaceIds.length - 1];
+  const race = raceById(lastRaceId);
+  const res = S.results[lastRaceId];
+  if (!res) return '';
+
+  const racePts = lb.map(p => ({ name: p.name, id: p.id, pts: calcRacePts(p.id, lastRaceId), color: pColor(p) }));
+  racePts.sort((a, b) => b.pts - a.pts);
+  const topScorer = racePts[0];
+  const maxPts = topScorer?.pts || 1;
+
+  const perfects = lb.map(p => {
+    const { correct } = predStats(p.id, lastRaceId);
+    return { name: p.name, correct };
+  }).sort((a, b) => b.correct - a.correct);
+  const topCorrect = perfects[0];
+
+  const winner = driverById(res.race?.p1);
+  const poleman = driverById(res.quali?.p1);
+
+  return `
+    <div class="card" style="background:linear-gradient(135deg,rgba(225,6,0,.08),rgba(0,0,0,0));border-color:rgba(225,6,0,.2)">
+      <div class="card-title" style="display:flex;align-items:center;gap:8px">
+        🏁 Last Race: ${esc(race.loc)}
+        <span style="font-size:12px;font-weight:400;color:var(--muted)">${fmtDate(race.date)}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px">
+        ${winner ? `<div style="flex:1;min-width:120px">
+          <div class="stat-label">Race Winner</div>
+          <div style="font-weight:800;font-size:16px">${esc(winner.name)}</div>
+        </div>` : ''}
+        ${poleman ? `<div style="flex:1;min-width:120px">
+          <div class="stat-label">Pole Position</div>
+          <div style="font-weight:800;font-size:16px">${esc(poleman.name)}</div>
+        </div>` : ''}
+        ${topScorer ? `<div style="flex:1;min-width:120px">
+          <div class="stat-label">Top Scorer</div>
+          <div style="font-weight:800;font-size:16px;color:${topScorer.color}">${esc(topScorer.name)}</div>
+          <div style="font-size:12px;color:var(--muted)">${topScorer.pts} pts</div>
+        </div>` : ''}
+        ${topCorrect?.correct > 0 ? `<div style="flex:1;min-width:120px">
+          <div class="stat-label">Most Correct</div>
+          <div style="font-weight:800;font-size:16px">${esc(topCorrect.name)}</div>
+          <div style="font-size:12px;color:var(--muted)">${topCorrect.correct} exact ${topCorrect.correct===1?'prediction':'predictions'}</div>
+        </div>` : ''}
+      </div>
+      <div class="stat-label" style="margin-bottom:6px">Points this race</div>
+      ${racePts.map(p => `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <div style="width:90px;font-size:13px;font-weight:600;color:${p.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
+          <div style="flex:1;background:rgba(255,255,255,.1);border-radius:3px;height:14px;overflow:hidden">
+            <div style="height:100%;width:${Math.round(p.pts/maxPts*100)}%;background:${p.color};border-radius:3px"></div>
+          </div>
+          <div style="width:32px;text-align:right;font-size:13px;font-weight:800;color:${p.color}">${p.pts}</div>
+        </div>
+      `).join('')}
+    </div>
   `;
 }
 
@@ -1978,8 +2112,7 @@ function renderPredictions(raceId) {
       <h2 class="sec-title">Predictions</h2>
       <div class="sec-actions">
         ${isCancelled
-          ? `<span class="badge badge-cancelled">🚫 Cancelled</span>
-             <button class="btn btn-ghost btn-sm" onclick="toggleCancelled(${_predRaceId})">↩ Reinstate</button>`
+          ? `<span class="badge badge-cancelled">🚫 Cancelled</span>`
           : effectiveLocked
           ? `${deadlinePassed && !locked ? '<span class="badge badge-locked">⏰ Deadline Passed</span>' : '<span class="badge badge-locked">🔒 Locked</span>'}
              <button class="btn btn-ghost btn-sm" onclick="toggleLock(${_predRaceId})">${locked ? '🔓 Unlock' : '🔒 Lock'}</button>`
@@ -2030,7 +2163,6 @@ function renderPredictions(raceId) {
         <span class="empty-icon">🚫</span>
         <div class="empty-title">${esc(race.name)} has been cancelled</div>
         <div class="empty-sub">This race does not count towards the standings. Predictions are preserved but no points will be awarded.</div>
-        <button class="btn btn-ghost btn-sm" onclick="toggleCancelled(${_predRaceId})">↩ Reinstate Race</button>
       </div>
     ` : !hasParticipants ? `
       <div class="empty">
@@ -2040,6 +2172,12 @@ function renderPredictions(raceId) {
         <button class="btn btn-primary" onclick="switchTab('participants')">Add Participants</button>
       </div>
     ` : `
+      ${dl && !dl.passed && (raceDeadlineMs(_predRaceId) - Date.now()) < 7200000 ? `
+        <div id="deadline-banner" style="background:linear-gradient(135deg,#b45309,#92400e);color:#fff;border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px">
+          <span style="font-size:20px">⏰</span>
+          <span>Predictions close in <span id="deadline-countdown" style="font-family:monospace;font-size:15px">${dl.text.replace(' until deadline','')}</span> — submit yours!</span>
+        </div>
+      ` : ''}
       ${renderParticipantCards(_predRaceId)}
       ${renderPredTable(_predRaceId)}
     `}
@@ -2081,10 +2219,18 @@ function renderParticipantCards(raceId) {
     const barClr  = isDone ? 'var(--green)' : pct > 0 ? 'var(--red)' : 'rgba(255,255,255,.2)';
     const pLocked = !!S.lockedP?.[raceId]?.[p.id];
     const anyLocked = locked || pLocked;
+
+    // First-to-submit indicator
+    const submitTimes = S.predSubmitTime?.[raceId] || {};
+    const submitTs = submitTimes[p.id];
+    const allTimes = Object.values(submitTimes).filter(Boolean);
+    const isFirst = submitTs && allTimes.length > 0 && submitTs === Math.min(...allTimes);
+    const firstBadge = isFirst ? `<span title="First to submit!" style="font-size:11px;background:var(--gold);color:#000;border-radius:3px;padding:1px 5px;font-weight:800;margin-left:4px">⚡ 1st</span>` : '';
+
     return `
       <button class="pq-card${isDone ? ' pq-done' : ''}" onclick="openPredictionsModal(${raceId}, '${p.id}')">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <div class="pq-name" style="margin:0">${esc(p.name)}</div>
+          <div class="pq-name" style="margin:0">${esc(p.name)}${firstBadge}</div>
           <span style="font-size:13px">${isDone ? '✅' : filled > 0 ? '⚠️' : '○'}</span>
         </div>
         <div class="pq-count">${filled} / ${totalSlots} positions${anyLocked ? ' 🔒' : ' ✏'}</div>
@@ -2450,10 +2596,8 @@ function renderResults(raceId) {
       <h2 class="sec-title">Race Results</h2>
       <div class="sec-actions">
         ${isCancelled
-          ? `<span class="badge badge-cancelled">🚫 Cancelled</span>
-             <button class="btn btn-ghost btn-sm" onclick="toggleCancelled(${_resRaceId})">↩ Reinstate</button>`
-          : `<button class="btn btn-ghost btn-sm" onclick="toggleCancelled(${_resRaceId})">🚫 Cancel Race</button>
-             <button class="btn btn-primary" onclick="openResultsModal(${_resRaceId})">${res ? '✏ Edit Results' : '+ Enter Results'}</button>`}
+          ? `<span class="badge badge-cancelled">🚫 Cancelled</span>`
+          : `<button class="btn btn-primary" onclick="openResultsModal(${_resRaceId})">${res ? '✏ Edit Results' : '+ Enter Results'}</button>`}
       </div>
     </div>
 
@@ -2470,7 +2614,6 @@ function renderResults(raceId) {
         <span class="empty-icon">🚫</span>
         <div class="empty-title">${esc(race.name)} has been cancelled</div>
         <div class="empty-sub">This race does not count towards the standings. No points will be awarded.</div>
-        <button class="btn btn-ghost btn-sm" onclick="toggleCancelled(${_resRaceId})">↩ Reinstate Race</button>
       </div>
     ` : res ? `
       <!-- Show entered results -->
@@ -2600,6 +2743,19 @@ function chipHtml(d) {
 // RENDER: CALENDAR
 // ═══════════════════════════════════════════════════════════════════
 
+function saveRaceTime(raceId, field, value) {
+  if (!S.raceTimes) S.raceTimes = {};
+  if (!S.raceTimes[raceId]) S.raceTimes[raceId] = {};
+  if (value) {
+    S.raceTimes[raceId][field] = value;
+  } else {
+    delete S.raceTimes[raceId][field];
+  }
+  if (!Object.keys(S.raceTimes[raceId]).length) delete S.raceTimes[raceId];
+  save();
+  renderCalendar();
+}
+
 function renderCalendar() {
   const el = document.getElementById('tab-calendar');
   const nr = nextRace();
@@ -2628,11 +2784,40 @@ function renderCalendar() {
                 ${isCancelled?'🚫 Cancelled':isDone?'✓ Done':isNext?'Next':'Upcoming'}
               </span>
             </div>
+            <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:5px" onclick="event.stopPropagation()">
+              ${(() => {
+                const times = S.raceTimes?.[race.id] || {};
+                const qualiLabel = race.sprint ? 'Sprint Quali' : 'Qualifying';
+                const lockTime = times.q;
+                const lockMs = lockTime ? new Date(`${race.date}T${lockTime}:00`).getTime() - 60000 : null;
+                const lockStr = lockMs ? (() => { const d = new Date(lockMs); return (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes(); })() : null;
+                return `
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:11px;color:var(--muted);min-width:82px">${qualiLabel}</span>
+                    <input type="time" value="${times.q || ''}"
+                           style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:3px 6px;color:var(--text);font-size:12px;font-family:inherit"
+                           onchange="saveRaceTime(${race.id},'q',this.value)">
+                    ${lockStr ? `<span style="font-size:10px;color:var(--red);white-space:nowrap">🔒 ${lockStr}</span>` : ''}
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:11px;color:var(--muted);min-width:82px">Race</span>
+                    <input type="time" value="${times.r || ''}"
+                           style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:3px 6px;color:var(--text);font-size:12px;font-family:inherit"
+                           onchange="saveRaceTime(${race.id},'r',this.value)">
+                  </div>`;
+              })()}
+            </div>
             ${!isCancelled && isDone && winner ? `
               <div style="margin-top:7px;padding-top:7px;border-top:1px solid var(--border);font-size:11px;color:var(--muted2)">
                 🏆 ${esc(winner.name)}
               </div>
             ` : ''}
+            <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)" onclick="event.stopPropagation()">
+              <button class="btn btn-ghost btn-sm" style="font-size:11px;width:100%"
+                      onclick="toggleCancelled(${race.id})">
+                ${isCancelled ? '↩ Reinstate Race' : '🚫 Cancel Race'}
+              </button>
+            </div>
           </div>
         `;
       }).join('')}
@@ -2974,8 +3159,15 @@ function saveAllPreds() {
 
   // Final commit of all buffered participants
   if (!S.predictions[_pred.raceId]) S.predictions[_pred.raceId] = {};
+  if (!S.predSubmitTime) S.predSubmitTime = {};
+  if (!S.predSubmitTime[_pred.raceId]) S.predSubmitTime[_pred.raceId] = {};
+  const nowTs = Date.now();
   S.participants.forEach(p => {
     S.predictions[_pred.raceId][p.id] = _pred.buf[p.id] || { race:{}, quali:{}, sprintquali:{}, sprint:{}, bonus:{} };
+    // Stamp first submit time (don't overwrite)
+    if (!S.predSubmitTime[_pred.raceId][p.id]) {
+      S.predSubmitTime[_pred.raceId][p.id] = nowTs;
+    }
   });
 
   save(); closeModal();
@@ -3062,6 +3254,7 @@ function openResultsModal(raceId) {
       </div>
       <div class="modal-foot-right">
         <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button id="fetch-results-btn" class="btn btn-ghost" onclick="fetchAndPopulateResults(${raceId})">🔄 Fetch Results</button>
         <button class="btn btn-primary" onclick="saveResults(${raceId})">Save Results</button>
       </div>
     </div>
@@ -3126,6 +3319,79 @@ function deleteResults(raceId) {
   save(); closeModal();
   toast('Results cleared');
   reRenderActive();
+}
+
+async function fetchAndPopulateResults(raceId) {
+  const race = raceById(raceId);
+  const BASE = `https://api.jolpi.ca/ergast/f1/2026/${raceId}`;
+  const btn = document.getElementById('fetch-results-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Fetching…'; }
+
+  const fetches = [
+    fetch(`${BASE}/results.json`).then(r => r.json()),
+    fetch(`${BASE}/qualifying.json`).then(r => r.json()),
+  ];
+  if (race.sprint) fetches.push(fetch(`${BASE}/sprint.json`).then(r => r.json()));
+
+  let raceData, qualiData, sprintData;
+  try {
+    const res = await Promise.all(fetches);
+    [raceData, qualiData, sprintData] = res;
+  } catch {
+    toast('Network error — could not fetch results', 'err');
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Fetch Results'; }
+    return;
+  }
+
+  const raceResults   = raceData?.MRData?.RaceTable?.Races?.[0]?.Results              || [];
+  const qualiResults  = qualiData?.MRData?.RaceTable?.Races?.[0]?.QualifyingResults    || [];
+  const sprintResults = sprintData?.MRData?.RaceTable?.Races?.[0]?.SprintResults       || [];
+
+  if (raceResults.length === 0 && qualiResults.length === 0) {
+    toast('No results available yet for this race', 'err');
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Fetch Results'; }
+    return;
+  }
+
+  const unknownCodes = [];
+  function setSelect(id, code) {
+    if (!code) return;
+    const d = driverByCode(code);
+    if (!d) { unknownCodes.push(code); return; }
+    const el = document.getElementById(id);
+    if (el) el.value = String(d.id);
+  }
+
+  // Qualifying P1–P3
+  qualiResults.slice(0, 3).forEach((e, i) => setSelect(`res-quali-p${i+1}`, e.Driver?.code));
+
+  // Race P1–P5
+  raceResults.slice(0, 5).forEach((e, i) => setSelect(`res-race-p${i+1}`, e.Driver?.code));
+
+  // Fastest Lap
+  const fl = raceResults.find(r => r.FastestLap?.rank === '1');
+  if (fl) setSelect('res-bonus-fastestLap', fl.Driver?.code);
+
+  // Bonus driver finishing position
+  const bonusDriver = driverById(S.bonusDriverId);
+  if (bonusDriver) {
+    const bonusEntry = raceResults.find(r => r.Driver?.code === bonusDriver.abbr);
+    if (bonusEntry) {
+      const el = document.getElementById('res-bonus-driverPlace');
+      if (el) el.value = bonusEntry.position;
+    }
+  }
+
+  // Sprint Race P1–P3
+  if (race.sprint && sprintResults.length > 0)
+    sprintResults.slice(0, 3).forEach((e, i) => setSelect(`res-sprint-p${i+1}`, e.Driver?.code));
+
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 Fetch Results'; }
+
+  if (unknownCodes.length > 0)
+    toast(`Pre-filled — unknown driver codes: ${[...new Set(unknownCodes)].join(', ')}`, 'err');
+  else
+    toast('Results pre-filled — review then save ✓');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -3536,6 +3802,7 @@ function isOwnPrediction(pid) {
 // ═══════════════════════════════════════════════════════════════════
 
 renderDashboard();
+startCountdownTimers();
 setTimeout(() => {
   updateIdentityUI();
   if (S.participants.length > 0 && !getIdentity()) showIdentityPicker();
