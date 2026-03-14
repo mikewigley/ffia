@@ -650,6 +650,8 @@ const DEFAULTS = {
   adminPin: '',
   deadlineHours: 0,
   raceTimes: {},
+  calendarLocked: false,
+  autoFetchResults: true,
   cancelled: {},
   clippyEnabled: true,
   clippyPhrase: 'I predict Stupid Stroll for P1',
@@ -825,10 +827,12 @@ function raceDeadlineMs(raceId) {
   const race = raceById(raceId);
   if (!race) return null;
   const t = S.raceTimes?.[raceId];
-  // Use quali/sprint-quali time for locking (1 min before)
   const lockTime = t?.q;
   if (lockTime) {
-    return new Date(`${race.date}T${lockTime}:00`).getTime() - 60000;
+    const ms = lockTime.length > 5
+      ? new Date(lockTime + ':00').getTime()          // full YYYY-MM-DDTHH:MM from OpenF1
+      : new Date(`${race.date}T${lockTime}:00`).getTime(); // legacy HH:MM
+    return ms - 60000;
   }
   if (S.deadlineHours) {
     return new Date(race.date + 'T12:00:00').getTime() - S.deadlineHours * 3600000;
@@ -900,6 +904,26 @@ function startCountdownTimers() {
           renderPredictions();
         }
       }
+    }
+    // Auto-fetch results after session estimated end times
+    if (S.autoFetchResults) {
+      const now = Date.now();
+      RACES.forEach(race => {
+        if (S.cancelled?.[race.id] || S.results[race.id]?.race?.p1) return; // skip cancelled or fully done
+        const t = S.raceTimes?.[race.id];
+        if (!t) return;
+        const dateStr = race.date;
+        // Quali/Sprint Quali: session end + 20 min buffer
+        if (t.q) {
+          const qMs = t.q.length > 5 ? new Date(t.q + ':00').getTime() : new Date(`${dateStr}T${t.q}:00`).getTime();
+          if (now >= qMs + 80 * 60000) autoFetchAndSave(race.id, 'q');
+        }
+        // Race: session end + 20 min buffer
+        if (t.r) {
+          const rMs = t.r.length > 5 ? new Date(t.r + ':00').getTime() : new Date(`${dateStr}T${t.r}:00`).getTime();
+          if (now >= rMs + 110 * 60000) autoFetchAndSave(race.id, 'r');
+        }
+      });
     }
   }, 1000);
 }
@@ -1232,7 +1256,7 @@ let _champagneTimer = null;
 let _standingsRevealed = false;
 
 function renderPodiumReveal(lb) {
-  const completedRaceIds = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).map(r => r.id);
+  const completedRaceIds = RACES.filter(r => S.results[r.id]?.race?.p1 && !S.cancelled?.[r.id]).map(r => r.id);
   if (completedRaceIds.length === 0) return '';
   if (!_revealRaceId || !completedRaceIds.includes(_revealRaceId)) {
     _revealRaceId = completedRaceIds[completedRaceIds.length - 1];
@@ -1858,6 +1882,99 @@ function renderHeadToHead(lb) {
   `;
 }
 
+function renderLiveRaceStandings() {
+  if (S.participants.length === 0) return '';
+
+  const now = Date.now();
+
+  // Priority 1: a race with partial results (in progress — race.p1 not yet set)
+  let race = RACES.find(r =>
+    !S.cancelled?.[r.id] &&
+    S.results[r.id] &&
+    !S.results[r.id]?.race?.p1
+  );
+  let isComplete = false;
+
+  // Priority 2: most recently completed race, shown until 1 day before next race's quali/sprint quali
+  if (!race) {
+    const completedRaces = RACES.filter(r => !S.cancelled?.[r.id] && S.results[r.id]?.race?.p1);
+    if (completedRaces.length === 0) return '';
+    const lastCompleted = completedRaces[completedRaces.length - 1];
+
+    // Find the next race after this one and its quali start time
+    const nextIdx = RACES.findIndex(r => r.id === lastCompleted.id) + 1;
+    const nextR = RACES.slice(nextIdx).find(r => !S.cancelled?.[r.id]);
+    if (nextR) {
+      const t = S.raceTimes?.[nextR.id];
+      // Use quali time if set, otherwise fall back to race date midnight
+      const nextQualiMs = t?.q
+        ? new Date(`${nextR.date}T${t.q}:00`).getTime()
+        : new Date(`${nextR.date}T00:00:00`).getTime();
+      const hideAfterMs = nextQualiMs - 24 * 60 * 60 * 1000; // 1 day before
+      if (now >= hideAfterMs) return '';
+    }
+    race = lastCompleted;
+    isComplete = true;
+  }
+
+  const res = S.results[race.id];
+
+  // Determine session order and which ones have data
+  const allSessions = race.sprint ? [
+    { key: 'sprintquali', label: 'SQ' },
+    { key: 'sprint',      label: 'Sprint' },
+    { key: 'quali',       label: 'Quali' },
+    { key: 'race',        label: 'Race' },
+  ] : [
+    { key: 'quali', label: 'Quali' },
+    { key: 'race',  label: 'Race' },
+  ];
+
+  const doneSessions    = allSessions.filter(s => res[s.key] && Object.values(res[s.key]).some(Boolean));
+  const pendingSessions = allSessions.filter(s => !doneSessions.find(d => d.key === s.key));
+
+  if (doneSessions.length === 0) return '';
+
+  const standings = [...S.participants]
+    .map(p => ({ ...p, pts: calcRacePts(p.id, race.id) }))
+    .sort((a, b) => b.pts - a.pts);
+  const leader = standings[0];
+
+  const sessionPips = allSessions.map(s => {
+    const done = doneSessions.find(d => d.key === s.key);
+    return `<span style="font-size:11px;padding:2px 6px;border-radius:3px;font-weight:700;background:${done ? 'var(--green)' : 'rgba(255,255,255,.08)'};color:${done ? '#000' : 'var(--muted)'}">${s.label}</span>`;
+  }).join('');
+
+  const rows = standings.map((p, i) => {
+    const gap     = i === 0 ? `<span style="color:var(--red);font-weight:800">LEAD</span>` : `+${leader.pts - p.pts}`;
+    const posIcon = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted)">${i+1}</span>`;
+    const abbr    = p.abbr || p.name.slice(0,4).toUpperCase();
+    return `<tr>
+      <td style="font-size:15px;text-align:center">${posIcon}</td>
+      <td style="font-weight:800;color:${pColor(p)};font-family:monospace">${esc(abbr)}</td>
+      <td><strong>${esc(p.name)}</strong></td>
+      <td style="text-align:right;font-weight:800;color:var(--red)">${p.pts}</td>
+      <td style="text-align:right;font-size:12px;color:var(--muted)">${gap}</td>
+    </tr>`;
+  }).join('');
+
+  const label = isComplete ? '🏁 Result' : '🔴 Live';
+  const borderCol = isComplete ? 'rgba(255,255,255,.1)' : 'rgba(0,216,86,.3)';
+  const bgGrad    = isComplete ? 'rgba(0,0,0,0)' : 'rgba(0,216,86,.04)';
+
+  return `
+    <div class="card" style="border-color:${borderCol};background:linear-gradient(135deg,${bgGrad},rgba(0,0,0,0))">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <div class="card-title" style="margin:0">${label} — R${race.id} ${esc(race.loc)}</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${sessionPips}</div>
+      </div>
+      ${!isComplete && pendingSessions.length > 0 ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Pending: ${pendingSessions.map(s=>s.label).join(' → ')}</div>` : ''}
+      <div class="tw">
+        <table><tbody>${rows}</tbody></table>
+      </div>
+    </div>`;
+}
+
 function renderDashboard() {
   const el = document.getElementById('tab-dashboard');
   const lb = leaderboard();
@@ -1917,6 +2034,8 @@ function renderDashboard() {
         <div class="stat-sub" id="next-race-countdown">${nr ? fmtDate(nr.date) : ''}</div>
       </div>
     </div>
+
+    ${renderLiveRaceStandings()}
 
     ${lb.length > 0 ? renderPodiumReveal(lb) : ''}
 
@@ -2908,17 +3027,190 @@ function chipHtml(d) {
 // RENDER: CALENDAR
 // ═══════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════
+// CALENDAR SYNC — OpenF1
+// ═══════════════════════════════════════════════════════════════════
+
+async function syncCalendarFromOpenF1() {
+  const btn = document.getElementById('sync-calendar-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Syncing…'; }
+
+  let sessions;
+  try {
+    const res = await fetch('https://api.openf1.org/v1/sessions?year=2026');
+    sessions = await res.json();
+  } catch {
+    toast('Could not reach OpenF1 API', 'err');
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync Times'; }
+    return;
+  }
+
+  if (!Array.isArray(sessions) || sessions.length === 0) {
+    toast('No session data available yet for 2026', 'err');
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync Times'; }
+    return;
+  }
+
+  // Group sessions by meeting_key
+  const byMeeting = {};
+  sessions.forEach(s => {
+    if (!byMeeting[s.meeting_key]) byMeeting[s.meeting_key] = [];
+    byMeeting[s.meeting_key].push(s);
+  });
+
+  if (!S.raceTimes) S.raceTimes = {};
+  let updated = 0;
+
+  Object.values(byMeeting).forEach(mtg => {
+    const raceSession = mtg.find(s => s.session_name === 'Race');
+    if (!raceSession?.date_start) return;
+
+    // Match to our RACES by race date (try UTC date, then ±1 day for edge cases)
+    const utcDate = raceSession.date_start.slice(0, 10);
+    let race = RACES.find(r => r.date === utcDate);
+    if (!race) {
+      // Try next/prev day (e.g. Las Vegas race starts after midnight UTC)
+      const d = new Date(utcDate);
+      const prev = new Date(d - 86400000).toISOString().slice(0, 10);
+      const next = new Date(d.getTime() + 86400000).toISOString().slice(0, 10);
+      race = RACES.find(r => r.date === prev || r.date === next);
+    }
+    if (!race) return;
+
+    if (!S.raceTimes[race.id]) S.raceTimes[race.id] = {};
+
+    // Store as local YYYY-MM-DDTHH:MM (converted from UTC)
+    const toLocal = iso => {
+      const d = new Date(iso);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
+    const sessionMap = {
+      'Practice 1':        'p1',
+      'Practice 2':        'p2',
+      'Practice 3':        'p3',
+      'Sprint Qualifying': race.sprint ? 'q' : null,
+      'Sprint Shootout':   race.sprint ? 'q' : null,  // OpenF1 legacy name
+      'Sprint':            's',
+      'Qualifying':        race.sprint ? 'ql' : 'q',
+      'Race':              'r',
+    };
+
+    let raceUpdated = false;
+    mtg.forEach(s => {
+      const key = sessionMap[s.session_name];
+      if (!key || !s.date_start) return;
+      S.raceTimes[race.id][key] = toLocal(s.date_start);
+      if (key === 'q') raceUpdated = true;
+    });
+    if (raceUpdated) updated++;
+  });
+
+  save();
+  renderCalendar();
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync Times'; }
+  toast(updated > 0 ? `Synced ${updated} race weekends from OpenF1` : 'No new data — check back closer to race weekend');
+}
+
+function toggleCalendarLock() {
+  S.calendarLocked = !S.calendarLocked;
+  save();
+  renderCalendar();
+}
+
 function saveRaceTime(raceId, field, value) {
   if (!S.raceTimes) S.raceTimes = {};
   if (!S.raceTimes[raceId]) S.raceTimes[raceId] = {};
   if (value) {
-    S.raceTimes[raceId][field] = value;
+    // If existing stored value has a full datetime, preserve the date portion
+    const existing = S.raceTimes[raceId][field];
+    if (existing && existing.length > 5 && value.length <= 5) {
+      S.raceTimes[raceId][field] = existing.slice(0, 11) + value;
+    } else {
+      S.raceTimes[raceId][field] = value;
+    }
   } else {
     delete S.raceTimes[raceId][field];
   }
   if (!Object.keys(S.raceTimes[raceId]).length) delete S.raceTimes[raceId];
   save();
   renderCalendar();
+}
+
+function buildCalendarSessionRows(race) {
+  const times = S.raceTimes?.[race.id] || {};
+  const toHHMM = v => v ? (v.length > 5 ? v.slice(11, 16) : v) : '';
+  const toDayLabel = v => {
+    if (!v || v.length <= 5) return '';
+    const d = new Date(v.length === 16 ? v + ':00' : v);
+    return d.toLocaleDateString('en-GB', { weekday:'short' }) + ' ' + d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  };
+  const synced = Object.values(times).some(v => v?.length > 5);
+  const lockMs = raceDeadlineMs(race.id);
+  const lockStr = lockMs ? (function() { const d = new Date(lockMs); return (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes(); })() : null;
+
+  const sessionRows = race.sprint ? [
+    { key:'p1', label:'Practice 1'              },
+    { key:'q',  label:'Sprint Quali', isLock:true },
+    { key:'s',  label:'Sprint Race'              },
+    { key:'ql', label:'Qualifying'               },
+    { key:'r',  label:'Race'                     },
+  ] : [
+    { key:'p1', label:'Practice 1' },
+    { key:'p2', label:'Practice 2' },
+    { key:'p3', label:'Practice 3' },
+    { key:'q',  label:'Qualifying', isLock:true },
+    { key:'r',  label:'Race'       },
+  ];
+
+  let html = synced ? '<div style="font-size:10px;color:var(--green);margin-bottom:4px">⚡ Synced from OpenF1</div>' : '';
+
+  for (const row of sessionRows) {
+    const val = times[row.key];
+    const dayLabel = toDayLabel(val);
+    const timeStr = toHHMM(val);
+
+    html += '<div style="display:flex;flex-direction:column;gap:1px;margin-bottom:2px">';
+
+    if (S.calendarLocked) {
+      // Read-only display: label + day + time clearly formatted
+      html += '<div style="display:flex;align-items:baseline;gap:8px">';
+      html += '<span style="font-size:11px;color:var(--muted);min-width:82px;flex-shrink:0">' + row.label + '</span>';
+      if (dayLabel) {
+        html += '<span style="font-size:12px;color:var(--text);font-weight:600">' + dayLabel + '</span>';
+      } else if (timeStr) {
+        html += '<span style="font-size:12px;color:var(--text);font-weight:600">' + timeStr + '</span>';
+      } else {
+        html += '<span style="font-size:12px;color:var(--muted2)">—</span>';
+      }
+      if (row.isLock && lockStr) {
+        html += '<span style="font-size:10px;color:var(--red);margin-left:4px">🔒 locks ' + lockStr + '</span>';
+      }
+      html += '</div>';
+    } else {
+      // Edit mode: time input row
+      html += '<div style="display:flex;align-items:center;gap:6px;min-height:22px">';
+      html += '<span style="font-size:11px;color:var(--muted);min-width:82px">' + row.label + '</span>';
+      html += '<input type="time" value="' + timeStr + '"'
+            + ' style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:3px 6px;color:var(--text);font-size:12px;font-family:inherit"'
+            + ' onchange="saveRaceTime(' + race.id + ',\'' + row.key + '\',this.value)">';
+      if (!row.isLock && dayLabel) {
+        html += '<span style="font-size:10px;color:var(--muted);white-space:nowrap">' + dayLabel + '</span>';
+      }
+      html += '</div>';
+      if (row.isLock && (dayLabel || lockStr)) {
+        html += '<div style="display:flex;align-items:center;gap:8px;padding-left:88px">';
+        if (dayLabel) html += '<span style="font-size:10px;color:var(--muted)">' + dayLabel + '</span>';
+        if (lockStr)  html += '<span style="font-size:10px;color:var(--red)">🔒 locks ' + lockStr + '</span>';
+        html += '</div>';
+      }
+    }
+
+    html += '</div>';
+  }
+
+  return html;
 }
 
 function renderCalendar() {
@@ -2929,7 +3221,11 @@ function renderCalendar() {
   el.innerHTML = `
     <div class="sec-hdr">
       <h2 class="sec-title">2025 Season Calendar</h2>
-      <span style="color:var(--muted);font-size:13px">${done} of 24 complete</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--muted);font-size:13px">${done} of 24 complete</span>
+        <button id="sync-calendar-btn" class="btn btn-ghost btn-sm" onclick="syncCalendarFromOpenF1()" ${S.calendarLocked ? 'disabled title="Unlock calendar to sync"' : ''}>🔄 Sync Times</button>
+        <button class="btn btn-sm ${S.calendarLocked ? 'btn-primary' : 'btn-ghost'}" onclick="toggleCalendarLock()" title="${S.calendarLocked ? 'Unlock calendar times' : 'Lock calendar times'}">${S.calendarLocked ? '🔒 Locked' : '🔓 Lock'}</button>
+      </div>
     </div>
     <div class="cal-grid">
       ${RACES.map(race => {
@@ -2950,27 +3246,7 @@ function renderCalendar() {
               </span>
             </div>
             <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:5px" onclick="event.stopPropagation()">
-              ${(() => {
-                const times = S.raceTimes?.[race.id] || {};
-                const qualiLabel = race.sprint ? 'Sprint Quali' : 'Qualifying';
-                const lockTime = times.q;
-                const lockMs = lockTime ? new Date(`${race.date}T${lockTime}:00`).getTime() - 60000 : null;
-                const lockStr = lockMs ? (() => { const d = new Date(lockMs); return (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes(); })() : null;
-                return `
-                  <div style="display:flex;align-items:center;gap:6px">
-                    <span style="font-size:11px;color:var(--muted);min-width:82px">${qualiLabel}</span>
-                    <input type="time" value="${times.q || ''}"
-                           style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:3px 6px;color:var(--text);font-size:12px;font-family:inherit"
-                           onchange="saveRaceTime(${race.id},'q',this.value)">
-                    ${lockStr ? `<span style="font-size:10px;color:var(--red);white-space:nowrap">🔒 ${lockStr}</span>` : ''}
-                  </div>
-                  <div style="display:flex;align-items:center;gap:6px">
-                    <span style="font-size:11px;color:var(--muted);min-width:82px">Race</span>
-                    <input type="time" value="${times.r || ''}"
-                           style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:3px 6px;color:var(--text);font-size:12px;font-family:inherit"
-                           onchange="saveRaceTime(${race.id},'r',this.value)">
-                  </div>`;
-              })()}
+              ${buildCalendarSessionRows(race)}
             </div>
             ${!isCancelled && isDone && winner ? `
               <div style="margin-top:7px;padding-top:7px;border-top:1px solid var(--border);font-size:11px;color:var(--muted2)">
@@ -3568,6 +3844,109 @@ async function fetchAndPopulateResults(raceId) {
     toast('Results pre-filled — review then save ✓');
 }
 
+// Auto-fetch: _autoFetchDone = permanently complete, _autoFetchRetryAfter = timestamp to retry
+const _autoFetchDone       = new Set();
+const _autoFetchRetryAfter = new Map();
+const _autoFetchInFlight   = new Set();
+const RETRY_MS = 30 * 60 * 1000; // 30 minutes
+
+async function autoFetchAndSave(raceId, trigger) {
+  const key = `${raceId}-${trigger}`;
+  if (_autoFetchDone.has(key)) return;
+  if (_autoFetchInFlight.has(key)) return;
+  const retryAt = _autoFetchRetryAfter.get(key);
+  if (retryAt && Date.now() < retryAt) return;
+
+  _autoFetchInFlight.add(key);
+
+  const race = raceById(raceId);
+  const BASE = `https://api.jolpi.ca/ergast/f1/2026/${raceId}`;
+
+  let raceData, qualiData, sprintData;
+  try {
+    const fetches = [
+      fetch(`${BASE}/results.json`).then(r => r.json()),
+      fetch(`${BASE}/qualifying.json`).then(r => r.json()),
+    ];
+    if (race.sprint) fetches.push(fetch(`${BASE}/sprint.json`).then(r => r.json()));
+    const res = await Promise.all(fetches);
+    [raceData, qualiData, sprintData] = res;
+  } catch {
+    // Network error — retry in 30 min
+    _autoFetchRetryAfter.set(key, Date.now() + RETRY_MS);
+    _autoFetchInFlight.delete(key);
+    return;
+  }
+
+  const raceResults   = raceData?.MRData?.RaceTable?.Races?.[0]?.Results           || [];
+  const qualiResults  = qualiData?.MRData?.RaceTable?.Races?.[0]?.QualifyingResults || [];
+  const sprintResults = sprintData?.MRData?.RaceTable?.Races?.[0]?.SprintResults    || [];
+
+  // Nothing published yet — retry in 30 min
+  if (raceResults.length === 0 && qualiResults.length === 0) {
+    _autoFetchRetryAfter.set(key, Date.now() + RETRY_MS);
+    _autoFetchInFlight.delete(key);
+    return;
+  }
+
+  const existing = S.results[raceId] || {};
+  const merged = {
+    race:        { ...existing.race        },
+    quali:       { ...existing.quali       },
+    sprintquali: { ...existing.sprintquali },
+    sprint:      { ...existing.sprint      },
+    bonus:       { ...existing.bonus       },
+  };
+
+  const set = (obj, pos, code) => {
+    if (obj[pos]) return; // don't overwrite manually entered data
+    const d = driverByCode(code);
+    if (d) obj[pos] = d.id;
+  };
+
+  qualiResults.slice(0, 3).forEach((e, i) => set(merged.quali, `p${i+1}`, e.Driver?.code));
+  raceResults.slice(0, 5).forEach((e, i)  => set(merged.race,  `p${i+1}`, e.Driver?.code));
+
+  const fl = raceResults.find(r => r.FastestLap?.rank === '1');
+  if (fl && !merged.bonus.fastestLap) merged.bonus.fastestLap = driverByCode(fl.Driver?.code)?.id || null;
+
+  const bonusDriver = driverById(S.bonusDriverId);
+  if (bonusDriver && !merged.bonus.driverPlace) {
+    const be = raceResults.find(r => r.Driver?.code === bonusDriver.abbr);
+    if (be) merged.bonus.driverPlace = +be.position;
+  }
+
+  // Sprint results — if expected but missing, retry in 30 min
+  if (race.sprint) {
+    if (sprintResults.length > 0) {
+      sprintResults.slice(0, 3).forEach((e, i) => set(merged.sprint, `p${i+1}`, e.Driver?.code));
+    } else if (trigger === 'r') {
+      // Sprint data not yet published — schedule retry but still save what we have
+      _autoFetchRetryAfter.set(`${raceId}-sprint`, Date.now() + RETRY_MS);
+    }
+  }
+
+  // Only save if something actually changed
+  const before = JSON.stringify(S.results[raceId] || {});
+  if (JSON.stringify(merged) !== before) {
+    S.results[raceId] = merged;
+    save();
+    reRenderActive();
+    toast(`🔄 Auto-fetched results for ${race.name}`);
+  }
+
+  // Mark done only when all expected data is present
+  const sprintDone = !race.sprint || sprintResults.length > 0;
+  if (sprintDone) {
+    _autoFetchDone.add(key);
+    _autoFetchRetryAfter.delete(key);
+  } else {
+    _autoFetchRetryAfter.set(key, Date.now() + RETRY_MS);
+  }
+
+  _autoFetchInFlight.delete(key);
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // LOCK / UNLOCK PREDICTIONS
 // ═══════════════════════════════════════════════════════════════════
@@ -3658,6 +4037,10 @@ function renderSettings() {
         <label class="fl">Prediction Deadline (hours before race-day noon — 0 to disable)</label>
         <input class="fi" id="s-deadline" type="number" value="${S.deadlineHours ?? 0}" min="0" max="168"
                placeholder="0 = no auto-deadline">
+      </div>
+      <div class="fg" style="display:flex;align-items:center;gap:12px;margin-top:4px">
+        <input type="checkbox" id="s-auto-fetch" ${S.autoFetchResults !== false ? 'checked' : ''} style="width:18px;height:18px;cursor:pointer">
+        <label for="s-auto-fetch" class="fl" style="margin:0;cursor:pointer">Auto-fetch results from Jolpica API (20 min after estimated session end)</label>
       </div>
     </div>
 
@@ -3860,6 +4243,10 @@ function saveSettings() {
   // Deadline
   const dlEl = document.getElementById('s-deadline');
   if (dlEl) S.deadlineHours = Math.max(0, +dlEl.value || 0);
+
+  // Auto-fetch
+  const afEl = document.getElementById('s-auto-fetch');
+  if (afEl) S.autoFetchResults = afEl.checked;
 
   save();
   { const _hn = document.getElementById('hdr-name'); if (_hn) _hn.textContent = S.leagueName; }
