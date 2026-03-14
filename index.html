@@ -12,6 +12,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FFIA">
 <link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="manifest-icon-192.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
 <title>FFIA Fantasy League 2026</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -305,14 +307,15 @@ body.light #undo-snackbar { background: #fff; color: #111; }
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
   .nav { position: fixed !important; top: auto !important; bottom: 0; left: 0; right: 0;
-         border-bottom: none; border-top: 1px solid var(--border); z-index: 200; }
+         border-bottom: none; border-top: 1px solid var(--border); z-index: 200;
+         padding-bottom: env(safe-area-inset-bottom, 0px); }
   .nav-inner { justify-content: space-around; padding: 0; gap: 0; }
   .nav-tab { flex: 1; flex-direction: column; padding: 7px 2px 10px;
              gap: 2px; border-bottom: none; border-top: 3px solid transparent; }
   .nav-tab.active { border-top-color: var(--red); border-bottom-color: transparent; }
   .nav-tab .ni { font-size: 20px; }
   .nav-tab span:not(.ni) { display: block !important; white-space: nowrap; overflow: hidden; font-size: 9px; }
-  .main { padding-bottom: 90px; }
+  .main { padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
   .pred-race-nav { position: fixed !important; bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important; left: 0; right: 0; z-index: 201; border-radius: 0 !important; }
   #tab-predictions { padding-bottom: 140px; }
   #tab-results { padding-bottom: 140px; }
@@ -2999,8 +3002,8 @@ function buildResultsDisplay(raceId) {
     { key: 'race',        label: 'Race Result',          positions: RACE_POS,   icon: '🏁' },
     { key: 'quali',       label: 'Qualifying Result',    positions: PODIUM_POS, icon: '🕐' },
     ...(race.sprint ? [
-      { key: 'sprintquali', label: 'Sprint Quali Result', positions: PODIUM_POS, icon: '🕐' },
       { key: 'sprint',      label: 'Sprint Race Result',  positions: PODIUM_POS, icon: '🏁' },
+      { key: 'sprintquali', label: 'Sprint Quali Result', positions: PODIUM_POS, icon: '🕐' },
     ] : []),
   ];
 
@@ -3674,8 +3677,8 @@ function openResultsModal(raceId) {
     { key: 'race',        label: 'Race Result',          positions: RACE_POS,   icon: '🏁', desc: 'Top 5 finishers'    },
     { key: 'quali',       label: 'Qualifying Result',    positions: PODIUM_POS, icon: '🕐', desc: 'Top 3 qualifiers'   },
     ...(race.sprint ? [
-      { key: 'sprintquali', label: 'Sprint Quali Result', positions: PODIUM_POS, icon: '🕐', desc: 'Sprint shootout P1–P3' },
       { key: 'sprint',      label: 'Sprint Race Result',  positions: PODIUM_POS, icon: '🏁', desc: 'Sprint top 3'          },
+      { key: 'sprintquali', label: 'Sprint Quali Result', positions: PODIUM_POS, icon: '🕐', desc: 'Sprint shootout P1–P3' },
     ] : []),
   ];
 
