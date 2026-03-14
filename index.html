@@ -6,6 +6,12 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<meta name="theme-color" content="#e10600">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FFIA">
+<link rel="manifest" href="manifest.json">
 <title>FFIA Fantasy League 2026</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -266,9 +272,13 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 .toast-wrap { position: fixed; bottom: 22px; right: 22px; z-index: 2000; display: flex; flex-direction: column; gap: 7px; pointer-events: none; }
 @keyframes clippyIn { from { opacity:0; transform: translateY(30px) scale(.85); } to { opacity:1; transform: translateY(0) scale(1); } }
 #clippy-wrap.visible { display: flex !important; animation: clippyIn .5s cubic-bezier(.17,.67,.35,1.3) forwards; }
-.toast { background: #1c1c1c; border: 1px solid var(--border2); border-radius: var(--r); padding: 11px 16px; font-size: 13px; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,.5); animation: tIn .18s ease; display: flex; align-items: center; gap: 8px; }
+.toast { background: #1c1c1c; border: 1px solid var(--border2); border-radius: var(--r); padding: 11px 16px; font-size: 13px; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,.5); animation: tIn .18s ease; display: flex; align-items: center; gap: 8px; pointer-events: auto; }
 .toast.ok  { border-left: 3px solid var(--green); }
 .toast.err { border-left: 3px solid var(--red); }
+.toast-undo-btn { background: none; border: 1px solid var(--border2); border-radius: 4px; color: var(--gold); font-size: 12px; font-weight: 700; padding: 2px 8px; cursor: pointer; margin-left: 4px; white-space: nowrap; }
+.toast-undo-btn:hover { background: rgba(255,200,0,.1); }
+#undo-snackbar { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 2001; background: #1c1c1c; border: 1px solid var(--border2); border-left: 3px solid var(--gold); border-radius: var(--r); padding: 11px 16px; font-size: 13px; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,.6); display: flex; align-items: center; gap: 12px; animation: tIn .18s ease; pointer-events: auto; }
+body.light #undo-snackbar { background: #fff; color: #111; }
 @keyframes tIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -580,6 +590,14 @@ const TEAM_COLORS = {
   'TBD':             '#666666',
 };
 
+// ═══════════════════════════════════════════════════════════════════
+// SEASON — update this single line each year
+// ═══════════════════════════════════════════════════════════════════
+const SEASON_YEAR = 2026;
+const SEASON_SHORT = String(SEASON_YEAR).slice(2); // '26', '27', etc.
+const STORAGE_KEY   = 'f1fl' + SEASON_SHORT + 'v1';
+const IDENTITY_KEY  = 'f1fl' + SEASON_SHORT + '_identity';
+
 const DRIVERS = [
   {id:1,  name:'Max Verstappen',    abbr:'VER', team:'Red Bull Racing',   num:3  },
   {id:2,  name:'Isack Hadjar',      abbr:'HAD', team:'Red Bull Racing',   num:6  },
@@ -637,7 +655,9 @@ const RACES = [
 // ═══════════════════════════════════════════════════════════════════
 
 const DEFAULTS = {
-  leagueName: 'FFIA Fantasy League 2026',
+  leagueName: 'FFIA Fantasy League ' + SEASON_YEAR,
+  seasonYear: SEASON_YEAR,
+  seasonYearLocked: false,
   bonusDriverId: 13, // Carlos Sainz — configurable "specific driver" prediction
   // Points awarded for each CORRECT prediction per position
   scoring: {
@@ -648,7 +668,9 @@ const DEFAULTS = {
     bonus:       { fastestLap: 10, driverPlace: 1, dotd: 5 },
   },
   adminPin: '',
-  deadlineHours: 0,
+  deadlineHours: 0,   // legacy — superseded by lockMinsBefore
+  lockMinsBefore: 60,
+  lockMinsLocked: false,
   raceTimes: {},
   calendarLocked: false,
   autoFetchResults: true,
@@ -682,7 +704,7 @@ let S = loadState();
 
 function loadState() {
   try {
-    const raw = localStorage.getItem('f1fl26v1');
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const loaded = JSON.parse(raw);
       const merged = Object.assign({}, DEFAULTS, loaded);
@@ -699,7 +721,7 @@ function loadState() {
 }
 
 function save() {
-  try { localStorage.setItem('f1fl26v1', JSON.stringify(S)); } catch(_) {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch(_) {}
   fbSave();
 }
 
@@ -754,7 +776,7 @@ function initFirebase() {
       if (overlay && overlay.style.display !== 'none' && overlay.style.display !== '') return;
       if (remote) {
         S = fbMerge(remote);
-        try { localStorage.setItem('f1fl26v1', JSON.stringify(S)); } catch(_) {}
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch(_) {}
         { const _hn = document.getElementById('hdr-name'); if (_hn) _hn.textContent = S.leagueName; }
         renderTab(currentTab());
         updateIdentityUI();
@@ -828,16 +850,12 @@ function raceDeadlineMs(raceId) {
   if (!race) return null;
   const t = S.raceTimes?.[raceId];
   const lockTime = t?.q;
-  if (lockTime) {
-    const ms = lockTime.length > 5
-      ? new Date(lockTime + ':00').getTime()          // full YYYY-MM-DDTHH:MM from OpenF1
-      : new Date(`${race.date}T${lockTime}:00`).getTime(); // legacy HH:MM
-    return ms - 60000;
-  }
-  if (S.deadlineHours) {
-    return new Date(race.date + 'T12:00:00').getTime() - S.deadlineHours * 3600000;
-  }
-  return null;
+  const minsBefore = S.lockMinsBefore ?? 60;
+  if (!lockTime || !minsBefore) return null;
+  const qualiMs = lockTime.length > 5
+    ? new Date(lockTime + ':00').getTime()
+    : new Date(`${race.date}T${lockTime}:00`).getTime();
+  return qualiMs - minsBefore * 60000;
 }
 
 function isPastDeadline(raceId) {
@@ -902,6 +920,24 @@ function startCountdownTimers() {
           const banner = document.getElementById('deadline-banner');
           if (banner) banner.remove();
           renderPredictions();
+        }
+      }
+    }
+    // Live race card: countdown to next session
+    const cdEl = document.getElementById('live-session-countdown');
+    if (cdEl) {
+      const liveRace = RACES.find(r => !S.cancelled?.[r.id] && S.results[r.id] && !S.results[r.id]?.race?.p1);
+      if (liveRace) {
+        const t = S.raceTimes?.[liveRace.id] || {};
+        const SESSION_KEYS = liveRace.sprint ? ['sprintquali','sprint','quali','race'] : ['quali','race'];
+        const nextKey = SESSION_KEYS.find(k => {
+          const res = S.results[liveRace.id];
+          return !(res[k] && Object.values(res[k]).some(Boolean));
+        });
+        if (nextKey && t[nextKey]) {
+          const sessMs = t[nextKey].length > 5 ? new Date(t[nextKey] + ':00').getTime() : new Date(`${liveRace.date}T${t[nextKey]}:00`).getTime();
+          const diff = sessMs - Date.now();
+          cdEl.textContent = diff > 0 ? '· in ' + fmtCountdown(diff) : '';
         }
       }
     }
@@ -1968,7 +2004,7 @@ function renderLiveRaceStandings() {
         <div class="card-title" style="margin:0">${label} — R${race.id} ${esc(race.loc)}</div>
         <div style="display:flex;gap:4px;flex-wrap:wrap">${sessionPips}</div>
       </div>
-      ${!isComplete && pendingSessions.length > 0 ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Pending: ${pendingSessions.map(s=>s.label).join(' → ')}</div>` : ''}
+      ${!isComplete && pendingSessions.length > 0 ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Pending: ${pendingSessions.map(s=>s.label).join(' → ')} <span id="live-session-countdown" style="color:var(--gold);font-weight:700"></span></div>` : ''}
       <div class="tw">
         <table><tbody>${rows}</tbody></table>
       </div>
@@ -3037,7 +3073,7 @@ async function syncCalendarFromOpenF1() {
 
   let sessions;
   try {
-    const res = await fetch('https://api.openf1.org/v1/sessions?year=2026');
+    const res = await fetch('https://api.openf1.org/v1/sessions?year=' + (S.seasonYear ?? SEASON_YEAR));
     sessions = await res.json();
   } catch {
     toast('Could not reach OpenF1 API', 'err');
@@ -3046,7 +3082,7 @@ async function syncCalendarFromOpenF1() {
   }
 
   if (!Array.isArray(sessions) || sessions.length === 0) {
-    toast('No session data available yet for 2026', 'err');
+    toast('No session data available yet for ' + (S.seasonYear ?? SEASON_YEAR), 'err');
     if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync Times'; }
     return;
   }
@@ -3497,6 +3533,7 @@ function updatePredBuf(session, pos, val) {
   const p = S.participants[_pred.idx];
   if (!_pred.buf[p.id]) _pred.buf[p.id] = { race:{}, quali:{}, sprintquali:{}, sprint:{}, bonus:{} };
   _pred.buf[p.id][session][pos] = val ? +val : null;
+  checkPredDuplicates();
   // Auto-save immediately
   if (!S.predictions[_pred.raceId]) S.predictions[_pred.raceId] = {};
   S.predictions[_pred.raceId][p.id] = JSON.parse(JSON.stringify(_pred.buf[p.id]));
@@ -3621,6 +3658,7 @@ function saveAllPreds() {
   });
 
   save(); closeModal();
+  checkAllPredsSubmitted(_pred.raceId);
   reRenderActive();
 }
 
@@ -3666,7 +3704,7 @@ function openResultsModal(raceId) {
             const selDid = existing[sess.key]?.[pos] || null;
             return `<div class="pred-row">
               <span class="pred-pos-label">${POS_LABEL[pos]}</span>
-              <select class="fs" id="res-${sess.key}-${pos}" style="flex:1">
+              <select class="fs" id="res-${sess.key}-${pos}" style="flex:1" onchange="checkResultDuplicates()">
                 ${driverOptions(selDid)}
               </select>
             </div>`;
@@ -3757,9 +3795,11 @@ function saveResults(raceId) {
     dotd:        dotdEl?.value ? +dotdEl.value : null,
   };
 
+  const undoSnapshot = S.results[raceId] ? JSON.parse(JSON.stringify(S.results[raceId])) : null;
+  _lastResultUndo = { raceId, data: undoSnapshot };
   S.results[raceId] = results;
   save(); closeModal();
-  toast(`Results saved for ${race.name}!`);
+  showUndoSnackbar('Results saved — undo?', undoResultSave);
   reRenderActive();
 }
 
@@ -3773,7 +3813,7 @@ function deleteResults(raceId) {
 
 async function fetchAndPopulateResults(raceId) {
   const race = raceById(raceId);
-  const BASE = `https://api.jolpi.ca/ergast/f1/2026/${raceId}`;
+  const BASE = `https://api.jolpi.ca/ergast/f1/${S.seasonYear ?? SEASON_YEAR}/${raceId}`;
   const btn = document.getElementById('fetch-results-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⟳ Fetching…'; }
 
@@ -3860,7 +3900,7 @@ async function autoFetchAndSave(raceId, trigger) {
   _autoFetchInFlight.add(key);
 
   const race = raceById(raceId);
-  const BASE = `https://api.jolpi.ca/ergast/f1/2026/${raceId}`;
+  const BASE = `https://api.jolpi.ca/ergast/f1/${S.seasonYear ?? SEASON_YEAR}/${raceId}`;
 
   let raceData, qualiData, sprintData;
   try {
@@ -3951,6 +3991,16 @@ async function autoFetchAndSave(raceId, trigger) {
 // LOCK / UNLOCK PREDICTIONS
 // ═══════════════════════════════════════════════════════════════════
 
+function toggleSeasonYearLock() {
+  const doToggle = () => { S.seasonYearLocked = !S.seasonYearLocked; save(); renderSettings(); };
+  if (S.adminPin) { requirePin(doToggle); } else { doToggle(); }
+}
+
+function toggleLockMinsLock() {
+  const doToggle = () => { S.lockMinsLocked = !S.lockMinsLocked; save(); renderSettings(); };
+  if (S.adminPin) { requirePin(doToggle); } else { doToggle(); }
+}
+
 function requirePin(callback) {
   openModal(`
     <div class="modal-hdr">
@@ -4034,13 +4084,39 @@ function renderSettings() {
         <input class="fi" id="s-name" type="text" value="${esc(S.leagueName)}" maxlength="50">
       </div>
       <div class="fg">
-        <label class="fl">Prediction Deadline (hours before race-day noon — 0 to disable)</label>
-        <input class="fi" id="s-deadline" type="number" value="${S.deadlineHours ?? 0}" min="0" max="168"
-               placeholder="0 = no auto-deadline">
+        <label class="fl">Season Year</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input class="fi" id="s-season-year" type="number" value="${S.seasonYear ?? SEASON_YEAR}" min="2020" max="2099" style="max-width:120px" ${S.seasonYearLocked ? 'disabled' : ''}>
+          <button type="button" class="btn btn-sm ${S.seasonYearLocked ? 'btn-primary' : 'btn-ghost'}"
+                  onclick="toggleSeasonYearLock()"
+                  title="${S.seasonYearLocked ? 'Unlock season year' : 'Lock season year'}">
+            ${S.seasonYearLocked ? '🔒 Locked' : '🔓 Lock'}
+          </button>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">Lock predictions (minutes before qualifying / sprint qualifying — 0 to disable)</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input class="fi" id="s-lock-mins" type="number" value="${S.lockMinsBefore ?? 60}" min="0" max="1440"
+                 placeholder="0 = no auto-lock" style="max-width:120px" ${S.lockMinsLocked ? 'disabled' : ''}>
+          <button type="button" class="btn btn-sm ${S.lockMinsLocked ? 'btn-primary' : 'btn-ghost'}"
+                  onclick="toggleLockMinsLock()"
+                  title="${S.lockMinsLocked ? 'Unlock' : 'Lock'}">
+            ${S.lockMinsLocked ? '🔒 Locked' : '🔓 Lock'}
+          </button>
+        </div>
       </div>
       <div class="fg" style="display:flex;align-items:center;gap:12px;margin-top:4px">
         <input type="checkbox" id="s-auto-fetch" ${S.autoFetchResults !== false ? 'checked' : ''} style="width:18px;height:18px;cursor:pointer">
         <label for="s-auto-fetch" class="fl" style="margin:0;cursor:pointer">Auto-fetch results from Jolpica API (20 min after estimated session end)</label>
+      </div>
+      <div class="fg" style="display:flex;align-items:center;gap:12px;margin-top:4px">
+        ${notifPermissionState() === 'granted'
+          ? `<span style="font-size:13px;color:var(--green)">🔔 Deadline reminders enabled</span>`
+          : notifPermissionState() === 'denied'
+            ? `<span style="font-size:13px;color:var(--muted)">🔕 Notifications blocked by browser</span>`
+            : `<button class="btn btn-ghost btn-sm" onclick="requestNotifPermission()">🔔 Enable deadline reminders</button>`
+        }
       </div>
     </div>
 
@@ -4202,6 +4278,9 @@ function saveSettings() {
 
   S.leagueName = name;
 
+  const yearEl = document.getElementById('s-season-year');
+  if (yearEl && !S.seasonYearLocked) S.seasonYear = Math.max(2020, Math.min(2099, +yearEl.value || SEASON_YEAR));
+
   const readScore = (session, positions) => {
     positions.forEach(pos => {
       const el = document.getElementById(`sc-${session}-${pos}`);
@@ -4240,9 +4319,9 @@ function saveSettings() {
   const pinEl = document.getElementById('s-admin-pin');
   if (pinEl) S.adminPin = pinEl.value.trim();
 
-  // Deadline
-  const dlEl = document.getElementById('s-deadline');
-  if (dlEl) S.deadlineHours = Math.max(0, +dlEl.value || 0);
+  // Lock mins before quali
+  const lmEl = document.getElementById('s-lock-mins');
+  if (lmEl && !S.lockMinsLocked) S.lockMinsBefore = Math.max(0, +lmEl.value || 0);
 
   // Auto-fetch
   const afEl = document.getElementById('s-auto-fetch');
@@ -4250,6 +4329,7 @@ function saveSettings() {
 
   save();
   { const _hn = document.getElementById('hdr-name'); if (_hn) _hn.textContent = S.leagueName; }
+  document.title = 'FFIA Fantasy League ' + (S.seasonYear ?? SEASON_YEAR);
   toast('Settings saved');
 }
 
@@ -4292,7 +4372,7 @@ function resetAll() {
 // IDENTITY
 // ═══════════════════════════════════════════════════════════════════
 
-const IDENTITY_KEY = 'f1fl26_identity';
+// IDENTITY_KEY defined with SEASON_YEAR constants above
 
 function getIdentity() {
   const id = localStorage.getItem(IDENTITY_KEY);
@@ -4359,11 +4439,177 @@ function isOwnPrediction(pid) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// DUPLICATE DRIVER CHECKS
+// ═══════════════════════════════════════════════════════════════════
+
+function checkPredDuplicates() {
+  const race = raceById(_pred.raceId);
+  if (!race) return;
+  const sessions = race.sprint
+    ? [{ key:'sprintquali', pos:PODIUM_POS },{ key:'sprint', pos:PODIUM_POS },{ key:'quali', pos:PODIUM_POS },{ key:'race', pos:RACE_POS }]
+    : [{ key:'quali', pos:PODIUM_POS },{ key:'race', pos:RACE_POS }];
+  sessions.forEach(({ key, pos }) => {
+    const seen = {};
+    pos.forEach(p => { const el = document.getElementById('pred-' + key + '-' + p); if (el) el.style.outline = ''; });
+    pos.forEach(p => {
+      const el = document.getElementById('pred-' + key + '-' + p);
+      if (!el || !el.value) return;
+      if (seen[el.value]) {
+        el.style.outline = '2px solid var(--red)';
+        const prevEl = document.getElementById('pred-' + key + '-' + seen[el.value]);
+        if (prevEl) prevEl.style.outline = '2px solid var(--red)';
+      } else {
+        seen[el.value] = p;
+      }
+    });
+  });
+}
+
+function checkResultDuplicates() {
+  [{ key:'race', pos:RACE_POS },{ key:'quali', pos:PODIUM_POS },{ key:'sprint', pos:PODIUM_POS },{ key:'sprintquali', pos:PODIUM_POS }]
+    .forEach(({ key, pos }) => {
+      const seen = {};
+      pos.forEach(p => { const el = document.getElementById('res-' + key + '-' + p); if (el) el.style.outline = ''; });
+      pos.forEach(p => {
+        const el = document.getElementById('res-' + key + '-' + p);
+        if (!el || !el.value) return;
+        if (seen[el.value]) {
+          el.style.outline = '2px solid var(--red)';
+          const prevEl = document.getElementById('res-' + key + '-' + seen[el.value]);
+          if (prevEl) prevEl.style.outline = '2px solid var(--red)';
+        } else {
+          seen[el.value] = p;
+        }
+      });
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UNDO LAST RESULT SAVE
+// ═══════════════════════════════════════════════════════════════════
+
+let _lastResultUndo = null;
+let _undoTimer = null;
+
+function showUndoSnackbar(msg, fn) {
+  document.getElementById('undo-snackbar')?.remove();
+  clearTimeout(_undoTimer);
+  const el = document.createElement('div');
+  el.id = 'undo-snackbar';
+  el.innerHTML = '<span>' + msg + '</span><button class="toast-undo-btn" onclick="' + fn.name + '()">↩ Undo</button><button class="toast-undo-btn" style="color:var(--muted)" onclick="document.getElementById(\'undo-snackbar\')?.remove()">✕</button>';
+  document.body.appendChild(el);
+  _undoTimer = setTimeout(() => el.remove(), 8000);
+}
+
+function undoResultSave() {
+  document.getElementById('undo-snackbar')?.remove();
+  if (!_lastResultUndo) return;
+  const { raceId, data } = _lastResultUndo;
+  _lastResultUndo = null;
+  if (data) { S.results[raceId] = data; } else { delete S.results[raceId]; }
+  save(); reRenderActive();
+  toast('Result undone');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ALL PREDICTIONS SUBMITTED CHECK
+// ═══════════════════════════════════════════════════════════════════
+
+const _allPredsNotified = new Set();
+
+function checkAllPredsSubmitted(raceId) {
+  if (_allPredsNotified.has(raceId)) return;
+  if (!S.participants.length) return;
+  const allIn = S.participants.every(p => {
+    const pred = S.predictions[raceId]?.[p.id];
+    return pred?.race?.p1 != null;
+  });
+  if (allIn) {
+    _allPredsNotified.add(raceId);
+    const race = raceById(raceId);
+    toast('🎉 All ' + S.participants.length + ' participants have submitted predictions for ' + esc(race.name) + '!');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PREDICTION DEADLINE PUSH NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════
+
+const _notifScheduled = new Set();
+
+function requestNotifPermission() {
+  if (!('Notification' in window)) { toast('Push notifications not supported in this browser', 'err'); return; }
+  Notification.requestPermission().then(p => {
+    if (p === 'granted') { toast('Notifications enabled ✓'); scheduleDeadlineNotifications(); }
+    else toast('Notification permission denied', 'err');
+  });
+}
+
+function scheduleDeadlineNotifications() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const now = Date.now();
+  RACES.forEach(race => {
+    if (S.cancelled?.[race.id] || isPastDeadline(race.id)) return;
+    const deadlineMs = raceDeadlineMs(race.id);
+    if (!deadlineMs) return;
+    [60, 15].forEach(mins => {
+      const key = race.id + '-' + mins;
+      if (_notifScheduled.has(key)) return;
+      const fireAt = deadlineMs - mins * 60000;
+      if (fireAt <= now) return;
+      _notifScheduled.add(key);
+      setTimeout(() => {
+        if (Notification.permission === 'granted' && !isPastDeadline(race.id)) {
+          new Notification('FFIA — Predictions locking soon', {
+            body: mins + ' minutes until predictions lock for ' + race.name + '!',
+            icon: 'manifest-icon-192.png',
+            tag: 'ffia-deadline-' + race.id,
+          });
+        }
+      }, fireAt - now);
+    });
+  });
+}
+
+function notifPermissionState() {
+  if (!('Notification' in window)) return 'unsupported';
+  return Notification.permission; // 'default' | 'granted' | 'denied'
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SWIPE NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+
+const TABS = ['dashboard','predictions','results','calendar','participants','settings'];
+
+(function initSwipe() {
+  let startX = null, startY = null;
+  document.querySelector('.main').addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  document.querySelector('.main').addEventListener('touchend', e => {
+    if (startX === null) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    startX = null; startY = null;
+    if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.5) return; // too short or too vertical
+    if (document.querySelector('.overlay')) return; // modal open — don't swipe
+    const cur = document.querySelector('.nav-tab.active')?.dataset.tab;
+    const idx = TABS.indexOf(cur);
+    if (dx < 0 && idx < TABS.length - 1) switchTab(TABS[idx + 1]);
+    if (dx > 0 && idx > 0) switchTab(TABS[idx - 1]);
+  }, { passive: true });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════════
 
 renderDashboard();
+document.title = 'FFIA Fantasy League ' + (S.seasonYear ?? SEASON_YEAR);
 startCountdownTimers();
+scheduleDeadlineNotifications();
 setTimeout(() => {
   updateIdentityUI();
   if (S.participants.length > 0 && !getIdentity()) showIdentityPicker();
