@@ -2644,6 +2644,16 @@ function renderPredTable(raceId) {
     </tr>`;
   };
 
+  // Name repeat row — shown at top of each session section
+  const nameRepeatRow = sessKey => {
+    const hidden = window._collSess?.[sessKey] ? 'display:none' : '';
+    return `<tr data-sess="${sessKey}" style="${hidden}background:rgba(255,255,255,.025)">
+      <td class="pred-sticky" style="font-size:10px;color:var(--muted)"></td>
+      <td style="text-align:center;font-size:10px;font-weight:700;color:var(--gold)">★ Result</td>
+      ${lb.map(p => `<td style="text-align:center;font-size:10px;font-weight:700;color:var(--fg);white-space:nowrap;padding:4px 2px">${esc(p.abbr || p.name.slice(0,4).toUpperCase())}</td>`).join('')}
+    </tr>`;
+  };
+
   // Build session rows
   const sessionRows = sessions.map(sess => {
     const maxPts = sess.positions.reduce((s, pos) => s + (S.scoring[sess.key]?.[pos] || 0), 0);
@@ -2679,6 +2689,7 @@ function renderPredTable(raceId) {
     };
 
     return secHdr(sess.icon, sess.label, maxPts, sess.key) +
+      nameRepeatRow(sess.key) +
       sess.positions.map(pos => {
         const rDid = getRes(sess.key, pos);
         const rDrv = rDid ? driverById(rDid) : null;
@@ -2730,7 +2741,8 @@ function renderPredTable(raceId) {
   }).join('');
 
   // Build bonus rows
-  const bonusRows = secHdr('⭐', 'Bonus Predictions', bonusMaxPts, 'bonus') + `
+  const bonusRows = secHdr('⭐', 'Bonus Predictions', bonusMaxPts, 'bonus') +
+    nameRepeatRow('bonus') + `
     <tr data-sess="bonus" style="${window._collSess?.bonus?'display:none':''}">
       <td class="pred-sticky"><strong style="color:var(--red)">Fastest Lap</strong> <span style="font-size:10px;color:var(--muted);margin-left:5px">(${S.scoring.bonus?.fastestLap || 0}pts)</span></td>
       ${resDrvCell('fastestLap')}
