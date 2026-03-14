@@ -4586,18 +4586,30 @@ function notifPermissionState() {
 const TABS = ['dashboard','predictions','results','calendar','participants','settings'];
 
 (function initSwipe() {
-  let startX = null, startY = null;
-  document.querySelector('.main').addEventListener('touchstart', e => {
+  let startX = null, startY = null, cancelled = false;
+
+  document.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    cancelled = false;
   }, { passive: true });
-  document.querySelector('.main').addEventListener('touchend', e => {
+
+  document.addEventListener('touchmove', e => {
     if (startX === null) return;
+    const dx = Math.abs(e.touches[0].clientX - startX);
+    const dy = Math.abs(e.touches[0].clientY - startY);
+    // If moving more vertically than horizontally early on, treat as scroll
+    if (dy > dx && dy > 10) cancelled = true;
+  }, { passive: true });
+
+  document.addEventListener('touchend', e => {
+    if (startX === null || cancelled) { startX = null; return; }
     const dx = e.changedTouches[0].clientX - startX;
     const dy = e.changedTouches[0].clientY - startY;
-    startX = null; startY = null;
-    if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.5) return; // too short or too vertical
-    if (document.querySelector('.overlay')) return; // modal open — don't swipe
+    startX = null;
+    if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 2) return;
+    if (document.getElementById('overlay')?.style.display !== 'none' &&
+        document.getElementById('overlay')?.offsetParent !== null) return;
     const cur = document.querySelector('.nav-tab.active')?.dataset.tab;
     const idx = TABS.indexOf(cur);
     if (dx < 0 && idx < TABS.length - 1) switchTab(TABS[idx + 1]);
