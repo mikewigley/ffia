@@ -176,8 +176,8 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 
 /* ── TIMING BOARD ── */
 .timing-board { background: #0a0a0a; border-radius: 8px; overflow: hidden; font-family: monospace; border: 1px solid #333; }
-.timing-hdr { display: grid; grid-template-columns: 36px 52px 64px 80px; align-items: center; padding: 6px 12px; background: #1a1a1a; border-bottom: 1px solid #333; font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; gap: 0 8px; }
-.timing-row { display: grid; grid-template-columns: 36px 52px 64px 80px; align-items: center; padding: 7px 12px; border-bottom: 1px solid #1c1c1c; gap: 0 8px; transition: background .15s; }
+.timing-hdr { display: grid; grid-template-columns: 36px 52px 64px; align-items: center; padding: 6px 12px; background: #1a1a1a; border-bottom: 1px solid #333; font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; gap: 0 8px; }
+.timing-row { display: grid; grid-template-columns: 36px 52px 64px; align-items: center; padding: 7px 12px; border-bottom: 1px solid #1c1c1c; gap: 0 8px; transition: background .15s; }
 .timing-row:last-child { border-bottom: none; }
 .timing-pos { font-size: 13px; font-weight: 800; color: #fff; text-align: center; }
 .timing-abbr { font-size: 13px; font-weight: 800; letter-spacing: .5px; text-align: center; }
@@ -2094,7 +2094,7 @@ function renderTimingBoard(lb) {
   const rows = lb.map((p, i) => {
     const gap = i === 0
       ? '<span style="color:#e10600;font-weight:800">LEAD</span>'
-      : `+${leader.total - p.total}`;
+      : `<span style="color:#aaa">+${leader.total - p.total}</span>`;
     const abbr = p.abbr || p.name.slice(0,4).toUpperCase();
     const barW = maxPts > 0 ? Math.round(p.total / maxPts * 100) : 0;
     const posIcon = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : '';
@@ -2107,8 +2107,7 @@ function renderTimingBoard(lb) {
             <div class="timing-bar-fill" style="width:${barW}%;background:${pColor(p)}"></div>
           </div>
         </div>
-        <div class="timing-pts">${p.total}</div>
-        <div class="timing-gap">${gap}</div>
+        <div class="timing-pts">${gap}</div>
       </div>`;
   }).join('');
 
@@ -2117,7 +2116,6 @@ function renderTimingBoard(lb) {
       <div class="timing-hdr">
         <div style="text-align:center">Pos</div>
         <div style="text-align:center">DRV</div>
-        <div style="text-align:right">Pts</div>
         <div style="text-align:right">Gap</div>
       </div>
       ${rows}
