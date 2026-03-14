@@ -174,6 +174,30 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 .add-p-card { background: transparent; border: 2px dashed var(--border2); border-radius: var(--rl); padding: 18px; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; color: var(--muted); font-size: 14px; font-weight: 600; transition: all .15s; min-height: 130px; }
 .add-p-card:hover { border-color: var(--red); color: var(--red); background: rgba(225,6,0,.05); }
 
+/* ── TIMING BOARD ── */
+.timing-board { background: #0a0a0a; border-radius: 8px; overflow: hidden; font-family: monospace; border: 1px solid #333; }
+.timing-hdr { display: grid; grid-template-columns: 36px 52px 64px 80px; align-items: center; padding: 6px 12px; background: #1a1a1a; border-bottom: 1px solid #333; font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; gap: 0 8px; }
+.timing-row { display: grid; grid-template-columns: 36px 52px 64px 80px; align-items: center; padding: 7px 12px; border-bottom: 1px solid #1c1c1c; gap: 0 8px; transition: background .15s; }
+.timing-row:last-child { border-bottom: none; }
+.timing-pos { font-size: 13px; font-weight: 800; color: #fff; text-align: center; }
+.timing-abbr { font-size: 13px; font-weight: 800; letter-spacing: .5px; text-align: center; }
+.timing-pts { font-size: 13px; font-weight: 800; color: #fff; text-align: right; }
+.timing-gap { font-size: 12px; color: #aaa; text-align: right; font-family: monospace; }
+.timing-bar-bg { height: 4px; background: #222; border-radius: 2px; overflow: hidden; }
+.timing-bar-fill { height: 100%; border-radius: 2px; }
+/* Floating timing panel */
+#timing-panel { position: fixed; top: 70px; right: 12px; z-index: 200; width: 240px;
+                background: #0a0a0a; border: 1px solid #444; border-radius: 10px;
+                box-shadow: 0 8px 32px rgba(0,0,0,.6); overflow: hidden;
+                animation: slideInPanel .18s ease; }
+#timing-panel .timing-panel-hdr { display: flex; align-items: center; justify-content: space-between;
+                                  padding: 8px 12px; background: #1a1a1a; border-bottom: 1px solid #333; }
+#timing-panel .timing-panel-title { font-size: 11px; font-weight: 800; color: #e10600;
+                                    text-transform: uppercase; letter-spacing: .5px; font-family: monospace; }
+@keyframes slideInPanel { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+#timing-toggle-btn.active { background: rgba(225,6,0,.15); border-color: var(--red); color: var(--red); }
+#timing-panel .timing-board { border: none; border-radius: 0; }
+
 /* ── CALENDAR ── */
 .cal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
 .race-card { background: var(--card); border: 1px solid var(--border); border-left: 3px solid transparent; border-radius: var(--rl); padding: 14px; cursor: pointer; transition: all .15s; }
@@ -420,10 +444,12 @@ body.light ::-webkit-scrollbar-thumb { background: #ccc; }
     <div class="header-inner">
       <span class="logo">FFIA</span>
       <button class="btn btn-ghost btn-sm" id="identity-btn" onclick="showIdentityPicker()" style="font-size:13px;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:1;text-align:left">👤 Who are you?</button>
+      <button class="btn btn-ghost btn-sm" id="timing-toggle-btn" onclick="toggleTimingPanel()" title="Championship standings" style="font-size:13px;white-space:nowrap">🏎 Standings</button>
       <span id="sync-status" style="font-size:11px;color:var(--muted);white-space:nowrap"></span>
       <button class="btn btn-ghost btn-sm" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
     </div>
   </header>
+  <div id="timing-panel" style="display:none"></div>
 
   <nav class="nav">
     <div class="nav-inner">
@@ -1073,6 +1099,39 @@ function toggleTheme() {
   const light = document.body.classList.toggle('light');
   document.getElementById('theme-btn').textContent = light ? '☀️' : '🌙';
   localStorage.setItem('ffia_theme', light ? 'light' : 'dark');
+}
+
+// ── TIMING PANEL ───────────────────────────────────────────────────
+function toggleTimingPanel() {
+  const panel = document.getElementById('timing-panel');
+  const btn   = document.getElementById('timing-toggle-btn');
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  if (isOpen) {
+    panel.style.display = 'none';
+    btn?.classList.remove('active');
+  } else {
+    renderTimingPanel();
+    panel.style.display = 'block';
+    btn?.classList.add('active');
+  }
+}
+
+function renderTimingPanel() {
+  const panel = document.getElementById('timing-panel');
+  if (!panel) return;
+  const lb = leaderboard();
+  if (lb.length < 2) {
+    panel.innerHTML = `<div class="timing-panel-hdr"><span class="timing-panel-title">Championship</span><button onclick="toggleTimingPanel()" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px">✕</button></div><div style="padding:14px;color:#666;font-size:12px;font-family:monospace">No data yet</div>`;
+    return;
+  }
+  panel.innerHTML = `
+    <div class="timing-panel-hdr">
+      <span class="timing-panel-title">🏎 Championship</span>
+      <button onclick="toggleTimingPanel()" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px;line-height:1">✕</button>
+    </div>
+    ${renderTimingBoard(lb)}
+  `;
 }
 (function initTheme() {
   if (localStorage.getItem('ffia_theme') === 'light') {
@@ -2028,6 +2087,43 @@ function renderPostRaceSummary(lb, completedRaceIds) {
 // RENDER: PARTICIPANTS
 // ═══════════════════════════════════════════════════════════════════
 
+function renderTimingBoard(lb) {
+  if (lb.length === 0) return '';
+  const leader = lb[0];
+  const maxPts = leader.total || 1;
+  const rows = lb.map((p, i) => {
+    const gap = i === 0
+      ? '<span style="color:#e10600;font-weight:800">LEAD</span>'
+      : `+${leader.total - p.total}`;
+    const abbr = p.abbr || p.name.slice(0,4).toUpperCase();
+    const barW = maxPts > 0 ? Math.round(p.total / maxPts * 100) : 0;
+    const posIcon = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : '';
+    return `
+      <div class="timing-row">
+        <div class="timing-pos">${posIcon || `<span style="color:#666">${i+1}</span>`}</div>
+        <div class="timing-abbr" style="color:${pColor(p)}">
+          ${esc(abbr)}
+          <div class="timing-bar-bg" style="margin-top:3px">
+            <div class="timing-bar-fill" style="width:${barW}%;background:${pColor(p)}"></div>
+          </div>
+        </div>
+        <div class="timing-pts">${p.total}</div>
+        <div class="timing-gap">${gap}</div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="timing-board">
+      <div class="timing-hdr">
+        <div style="text-align:center">Pos</div>
+        <div style="text-align:center">DRV</div>
+        <div style="text-align:right">Pts</div>
+        <div style="text-align:right">Gap</div>
+      </div>
+      ${rows}
+    </div>`;
+}
+
 function renderParticipants() {
   const el = document.getElementById('tab-participants');
   const lb = leaderboard();
@@ -2180,6 +2276,7 @@ function renderPredictions(raceId) {
       ` : ''}
       ${renderParticipantCards(_predRaceId)}
       ${renderPredTable(_predRaceId)}
+      ${renderScoringReference(_predRaceId)}
     `}
 
     <div class="pred-race-nav">
@@ -2187,6 +2284,67 @@ function renderPredictions(raceId) {
         ${!prid ? 'disabled style="opacity:.3"' : ''}>◀ Prev Race</button>
       <button class="btn btn-ghost" onclick="renderPredictions(${nrid})"
         ${!nrid ? 'disabled style="opacity:.3"' : ''}>Next Race ▶</button>
+    </div>
+  `;
+}
+
+function renderScoringReference(raceId) {
+  const race = raceById(raceId);
+  const sc = S.scoring;
+  const bonusDrv = driverById(S.bonusDriverId);
+
+  const sessionRows = (key, positions, labels) =>
+    positions.map((pos, i) => {
+      const pts = sc[key]?.[pos];
+      return pts ? `<tr><td>${labels[i]}</td><td style="text-align:right;font-weight:700;color:var(--red)">${pts}</td></tr>` : '';
+    }).join('');
+
+  const raceLabels  = ['P1','P2','P3','P4','P5'];
+  const podiumLabels = ['P1','P2','P3'];
+
+  const sections = [];
+
+  sections.push({ title: '🏁 Race', rows: [
+    ...raceLabels.map((lbl, i) => { const pts = sc.race?.[RACE_POS[i]]; return pts ? `<tr><td>${lbl}</td><td style="text-align:right;font-weight:700;color:var(--red)">${pts}</td></tr>` : ''; }),
+    sc.race?.topN  ? `<tr><td style="color:var(--muted)">Any top-5</td><td style="text-align:right;font-weight:600;color:var(--muted)">${sc.race.topN}</td></tr>` : '',
+    sc.race?.top2  ? `<tr><td style="color:var(--muted)">P1/P2 each-way</td><td style="text-align:right;font-weight:600;color:var(--muted)">${sc.race.top2}</td></tr>` : '',
+  ].filter(Boolean).join('') });
+
+  sections.push({ title: '🕐 Qualifying', rows: [
+    ...podiumLabels.map((lbl, i) => { const pts = sc.quali?.[PODIUM_POS[i]]; return pts ? `<tr><td>${lbl}</td><td style="text-align:right;font-weight:700;color:var(--red)">${pts}</td></tr>` : ''; }),
+  ].filter(Boolean).join('') });
+
+  if (race.sprint) {
+    sections.push({ title: '🏎 Sprint Race', rows: [
+      ...podiumLabels.map((lbl, i) => { const pts = sc.sprint?.[PODIUM_POS[i]]; return pts ? `<tr><td>${lbl}</td><td style="text-align:right;font-weight:700;color:var(--red)">${pts}</td></tr>` : ''; }),
+      sc.sprint?.topN ? `<tr><td style="color:var(--muted)">Any top-3</td><td style="text-align:right;font-weight:600;color:var(--muted)">${sc.sprint.topN}</td></tr>` : '',
+    ].filter(Boolean).join('') });
+
+    sections.push({ title: '🕐 Sprint Quali', rows: [
+      ...podiumLabels.map((lbl, i) => { const pts = sc.sprintquali?.[PODIUM_POS[i]]; return pts ? `<tr><td>${lbl}</td><td style="text-align:right;font-weight:700;color:var(--red)">${pts}</td></tr>` : ''; }),
+    ].filter(Boolean).join('') });
+  }
+
+  const bonusRows = [
+    sc.bonus?.fastestLap ? `<tr><td>Fastest Lap</td><td style="text-align:right;font-weight:700;color:var(--red)">${sc.bonus.fastestLap}</td></tr>` : '',
+    sc.bonus?.dotd       ? `<tr><td>Driver of the Day</td><td style="text-align:right;font-weight:700;color:var(--red)">${sc.bonus.dotd}</td></tr>` : '',
+    bonusDrv && sc.bonus?.driverPlace ? `<tr><td>${esc(bonusDrv.name)} position</td><td style="text-align:right;font-weight:600;color:var(--muted)">${sc.bonus.driverPlace} pt/pos off</td></tr>` : '',
+  ].filter(Boolean).join('');
+  if (bonusRows) sections.push({ title: '⭐ Bonus', rows: bonusRows });
+
+  return `
+    <div class="card" style="margin-top:12px">
+      <div class="card-title" style="display:flex;align-items:center;gap:8px"><span>📊</span> Points Reference</div>
+      <div style="display:flex;flex-wrap:wrap;gap:16px">
+        ${sections.map(s => `
+          <div style="flex:1;min-width:130px">
+            <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${s.title}</div>
+            <table style="width:100%;font-size:13px;border-collapse:collapse">
+              <tbody>${s.rows}</tbody>
+            </table>
+          </div>
+        `).join('')}
+      </div>
     </div>
   `;
 }
@@ -2220,11 +2378,12 @@ function renderParticipantCards(raceId) {
     const pLocked = !!S.lockedP?.[raceId]?.[p.id];
     const anyLocked = locked || pLocked;
 
-    // First-to-submit indicator
+    // First-to-submit indicator — only shown if one person has a uniquely earliest timestamp
     const submitTimes = S.predSubmitTime?.[raceId] || {};
     const submitTs = submitTimes[p.id];
     const allTimes = Object.values(submitTimes).filter(Boolean);
-    const isFirst = submitTs && allTimes.length > 0 && submitTs === Math.min(...allTimes);
+    const firstTime = allTimes.length > 0 ? Math.min(...allTimes) : null;
+    const isFirst = submitTs && firstTime !== null && submitTs === firstTime && allTimes.filter(t => t === firstTime).length === 1;
     const firstBadge = isFirst ? `<span title="First to submit!" style="font-size:11px;background:var(--gold);color:#000;border-radius:3px;padding:1px 5px;font-weight:800;margin-left:4px">⚡ 1st</span>` : '';
 
     return `
@@ -2849,6 +3008,13 @@ function openParticipantModal(pid) {
                onkeydown="if(event.key==='Enter')saveParticipant('${pid||''}')">
       </div>
       <div class="fg" style="margin-top:12px">
+        <label class="fl">Nickname <span style="color:var(--muted);font-weight:400">(up to 4 characters, e.g. WIGm)</span></label>
+        <input class="fi" id="p-abbr" type="text" placeholder="ABCD" maxlength="4"
+               value="${p ? esc(p.abbr || '') : ''}"
+               style="max-width:100px"
+               onkeydown="if(event.key==='Enter')saveParticipant('${pid||''}')">
+      </div>
+      <div class="fg" style="margin-top:12px">
         <label class="fl">Car Colour</label>
         <div style="display:flex;align-items:center;gap:10px">
           <input type="color" id="p-color" value="${defaultColor}"
@@ -2876,14 +3042,15 @@ function openParticipantModal(pid) {
 function saveParticipant(pid) {
   const name  = document.getElementById('p-name').value.trim();
   const color = document.getElementById('p-color')?.value || '#e10600';
+  const abbr  = (document.getElementById('p-abbr')?.value || '').trim().slice(0, 4);
   if (!name) { toast('Please enter a name', 'err'); return; }
 
   if (pid) {
     const idx = S.participants.findIndex(p => p.id === pid);
-    if (idx >= 0) { S.participants[idx].name = name; S.participants[idx].color = color; }
+    if (idx >= 0) { S.participants[idx].name = name; S.participants[idx].color = color; S.participants[idx].abbr = abbr || undefined; }
     toast('Participant updated');
   } else {
-    S.participants.push({ id: uid(), name, color });
+    S.participants.push({ id: uid(), name, color, abbr: abbr || undefined });
     toast('Participant added!');
   }
   save(); closeModal(); renderParticipants(); updateIdentityUI();
@@ -3162,10 +3329,11 @@ function saveAllPreds() {
   if (!S.predSubmitTime) S.predSubmitTime = {};
   if (!S.predSubmitTime[_pred.raceId]) S.predSubmitTime[_pred.raceId] = {};
   const nowTs = Date.now();
+  // Only stamp first-submit time for the identity's own participant (who pressed Done)
+  const identity = getIdentity();
   S.participants.forEach(p => {
     S.predictions[_pred.raceId][p.id] = _pred.buf[p.id] || { race:{}, quali:{}, sprintquali:{}, sprint:{}, bonus:{} };
-    // Stamp first submit time (don't overwrite)
-    if (!S.predSubmitTime[_pred.raceId][p.id]) {
+    if (identity && identity.id === p.id && !S.predSubmitTime[_pred.raceId][p.id]) {
       S.predSubmitTime[_pred.raceId][p.id] = nowTs;
     }
   });
