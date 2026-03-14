@@ -1,0 +1,30 @@
+{
+  "name": "FFIA Fantasy League",
+  "short_name": "FFIA",
+  "description": "F1 Fantasy prediction league for friends",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#e10600",
+  "theme_color": "#e10600",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "manifest-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "manifest-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
