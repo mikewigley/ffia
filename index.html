@@ -2180,7 +2180,10 @@ let _predRaceId = null;
 
 function renderPredictions(raceId) {
   if (raceId != null) _predRaceId = raceId;
-  if (!_predRaceId) { const nr = nextRace(); _predRaceId = nr ? nr.id : RACES[0].id; }
+  if (!_predRaceId) {
+    const incomplete = RACES.find(r => !S.cancelled?.[r.id] && !S.results[r.id]?.race?.p1);
+    _predRaceId = incomplete ? incomplete.id : RACES[RACES.length - 1].id;
+  }
 
   const el   = document.getElementById('tab-predictions');
   const race = raceById(_predRaceId);
@@ -2737,7 +2740,12 @@ let _resRaceId = null;
 
 function renderResults(raceId) {
   if (raceId != null) _resRaceId = raceId;
-  if (!_resRaceId) { const nr = nextRace(); _resRaceId = nr ? nr.id : RACES[0].id; }
+  if (!_resRaceId) {
+    // Default to the first race without a complete race result (race P1 filled)
+    // Partial results (e.g. quali only) don't count as complete
+    const incomplete = RACES.find(r => !S.cancelled?.[r.id] && !S.results[r.id]?.race?.p1);
+    _resRaceId = incomplete ? incomplete.id : RACES[RACES.length - 1].id;
+  }
 
   const el   = document.getElementById('tab-results');
   const race = raceById(_resRaceId);
@@ -2764,7 +2772,7 @@ function renderResults(raceId) {
     <div class="card" style="margin-bottom:16px">
       <label class="fl">Select Race</label>
       <select class="fs" onchange="renderResults(+this.value)">
-        ${RACES.map(r => `<option value="${r.id}" ${r.id===_resRaceId?'selected':''}>${S.cancelled?.[r.id]?'🚫 ':''}Round ${r.id}: ${r.name}${S.results[r.id]?' ✓':''}</option>`).join('')}
+        ${RACES.map(r => `<option value="${r.id}" ${r.id===_resRaceId?'selected':''}>${S.cancelled?.[r.id]?'🚫 ':''}Round ${r.id}: ${r.name}${S.results[r.id]?.race?.p1?' ✓':S.results[r.id]?' ~':''}</option>`).join('')}
       </select>
     </div>
 
