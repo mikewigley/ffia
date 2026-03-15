@@ -2650,7 +2650,7 @@ function renderPredTable(raceId) {
     return `<tr data-sess="${sessKey}" style="${hidden}background:rgba(255,255,255,.025)">
       <td class="pred-sticky" style="font-size:10px;color:var(--muted)"></td>
       <td style="text-align:center;font-size:10px;font-weight:700;color:var(--gold)">★ Result</td>
-      ${lb.map(p => `<td style="text-align:center;font-size:10px;font-weight:700;color:var(--fg);white-space:nowrap;padding:4px 2px">${esc(p.abbr || p.name.slice(0,4).toUpperCase())}</td>`).join('')}
+      ${lb.map(p => `<td style="text-align:center;font-size:10px;font-weight:700;color:var(--fg);white-space:nowrap;padding:4px 2px">${esc(p.name)}</td>`).join('')}
     </tr>`;
   };
 
@@ -4603,7 +4603,8 @@ const TABS = ['dashboard','predictions','results','calendar','participants','set
   document.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-    cancelled = false;
+    // Cancel swipe if touch starts inside a horizontally scrollable table wrapper
+    cancelled = !!e.target.closest('.tw');
   }, { passive: true });
 
   document.addEventListener('touchmove', e => {
