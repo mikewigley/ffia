@@ -323,10 +323,11 @@ body.light #undo-snackbar { background: #fff; color: #111; }
   .stats-row { grid-template-columns: repeat(2,1fr); }
   .header-title { font-size: 16px; }
   .scoring-grid { grid-template-columns: 1fr; }
-  .anim-label { width: 80px; min-width: 80px; font-size: 11px; text-align: left; }
-  .anim-track-wrap { padding-right: 0; }
+  .anim-label { width: 100%; min-width: 0; font-size: 12px; text-align: left; margin-bottom: 2px; }
+  .anim-row { flex-wrap: wrap; row-gap: 0; column-gap: 6px; }
+  .anim-track-wrap { flex: 1; padding-right: 0; }
   .anim-car-wrap { display: none; }
-  .anim-pts { min-width: 40px; font-size: 11px; }
+  .anim-pts { min-width: 36px; font-size: 11px; }
 }
 
 /* ── LIGHT MODE ── */
