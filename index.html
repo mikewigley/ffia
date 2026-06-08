@@ -1710,7 +1710,7 @@ function renderBarChart(mode, lb) {
       const ptsDelay  = mode === 'season' ? (i * 1.0 + 13).toFixed(2) : (i * 0.65 + 6).toFixed(2);
       const ptsColor = p.pts < 0 ? '#ff7070' : p.pts === 0 ? 'var(--muted)' : color;
       return `
-        <div class="anim-row">
+        <div class="anim-row" data-pid="${p.id}">
           <div class="anim-label">${esc(p.name)}</div>
           <div class="anim-track-wrap">
             <div class="anim-track">
@@ -1731,6 +1731,7 @@ function replayAnims(mode) {
     el.offsetHeight; // force reflow
     el.style.animation = '';
   });
+  if (mode === 'season') startSeasonOvertakeWatcher(window._replayLb);
 }
 
 function renderAnimations(lb) {
@@ -2014,6 +2015,36 @@ function renderLiveRaceStandings() {
     </div>`;
 }
 
+let _seasonOvertakeRAF = null;
+let _seasonOvertakePrev = {};
+
+function startSeasonOvertakeWatcher(lb) {
+  if (!lb || lb.length === 0) return;
+  if (_seasonOvertakeRAF) cancelAnimationFrame(_seasonOvertakeRAF);
+  _seasonOvertakePrev = {};
+  const maxMs = lb.length * 1000 + 15000;
+  const t0 = performance.now();
+  function tick() {
+    const chart = document.getElementById('anim-chart-season');
+    if (!chart) return;
+    const ranked = [...chart.querySelectorAll('[data-pid]')]
+      .map(row => ({ row, pid: row.dataset.pid, w: row.querySelector('.anim-fill')?.clientWidth || 0 }))
+      .sort((a, b) => b.w - a.w);
+    ranked.forEach(({ row, pid }, newRank) => {
+      const prev = _seasonOvertakePrev[pid];
+      if (prev != null && prev > newRank) {
+        row.classList.remove('overtake-flash');
+        void row.offsetWidth;
+        row.classList.add('overtake-flash');
+        row.addEventListener('animationend', () => row.classList.remove('overtake-flash'), { once: true });
+      }
+      _seasonOvertakePrev[pid] = newRank;
+    });
+    if (performance.now() - t0 < maxMs) _seasonOvertakeRAF = requestAnimationFrame(tick);
+  }
+  _seasonOvertakeRAF = requestAnimationFrame(tick);
+}
+
 function renderDashboard() {
   const el = document.getElementById('tab-dashboard');
   const lb = leaderboard();
@@ -2174,6 +2205,7 @@ function renderDashboard() {
     ${lb.length > 0 ? renderRaceReplay(lb) : ''}
     ` : ''}
   `;
+  if (lb.length > 0) setTimeout(() => startSeasonOvertakeWatcher(lb), 50);
 }
 
 // ═══════════════════════════════════════════════════════════════════
