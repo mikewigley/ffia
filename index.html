@@ -632,25 +632,25 @@ const RACES = [
   {id:3,  name:'Japanese Grand Prix',       circuit:'Suzuka Circuit',                 loc:'Suzuka',      date:'2026-03-29', sprint:false},
   {id:4,  name:'Bahrain Grand Prix',        circuit:'Bahrain International Circuit',  loc:'Sakhir',      date:'2026-04-12', sprint:false},
   {id:5,  name:'Saudi Arabian Grand Prix',  circuit:'Jeddah Corniche Circuit',        loc:'Jeddah',      date:'2026-04-19', sprint:false},
-  {id:6,  name:'Miami Grand Prix',          circuit:'Miami International Autodrome',  loc:'Miami',       date:'2026-05-03', sprint:true },
-  {id:7,  name:'Canadian Grand Prix',       circuit:'Circuit Gilles Villeneuve',      loc:'Montréal',    date:'2026-05-24', sprint:true },
-  {id:8,  name:'Monaco Grand Prix',         circuit:'Circuit de Monaco',              loc:'Monaco',      date:'2026-06-07', sprint:false},
-  {id:9,  name:'Spanish Grand Prix',        circuit:'Circuit de Barcelona-Catalunya', loc:'Barcelona',   date:'2026-06-14', sprint:false},
-  {id:10, name:'Austrian Grand Prix',       circuit:'Red Bull Ring',                  loc:'Spielberg',   date:'2026-06-28', sprint:false},
-  {id:11, name:'British Grand Prix',        circuit:'Silverstone Circuit',            loc:'Silverstone', date:'2026-07-05', sprint:true },
-  {id:12, name:'Belgian Grand Prix',        circuit:'Circuit de Spa-Francorchamps',   loc:'Spa',         date:'2026-07-19', sprint:false},
-  {id:13, name:'Hungarian Grand Prix',      circuit:'Hungaroring',                    loc:'Budapest',    date:'2026-07-26', sprint:false},
-  {id:14, name:'Dutch Grand Prix',          circuit:'Circuit Zandvoort',              loc:'Zandvoort',   date:'2026-08-23', sprint:true },
-  {id:15, name:'Italian Grand Prix',        circuit:'Autodromo Nazionale Monza',      loc:'Monza',       date:'2026-09-06', sprint:false},
-  {id:16, name:'Madrid Grand Prix',         circuit:'Circuit de Madrid',              loc:'Madrid',      date:'2026-09-13', sprint:false},
-  {id:17, name:'Azerbaijan Grand Prix',     circuit:'Baku City Circuit',              loc:'Baku',        date:'2026-09-26', sprint:false},
-  {id:18, name:'Singapore Grand Prix',      circuit:'Marina Bay Street Circuit',      loc:'Singapore',   date:'2026-10-11', sprint:true },
-  {id:19, name:'United States Grand Prix',  circuit:'Circuit of the Americas',        loc:'Austin',      date:'2026-10-25', sprint:false},
-  {id:20, name:'Mexico City Grand Prix',    circuit:'Autódromo Hermanos Rodríguez',   loc:'Mexico City', date:'2026-11-01', sprint:false},
-  {id:21, name:'São Paulo Grand Prix',      circuit:'Autódromo José Carlos Pace',     loc:'São Paulo',   date:'2026-11-08', sprint:false},
-  {id:22, name:'Las Vegas Grand Prix',      circuit:'Las Vegas Strip Circuit',        loc:'Las Vegas',   date:'2026-11-21', sprint:false},
-  {id:23, name:'Qatar Grand Prix',          circuit:'Lusail International Circuit',   loc:'Lusail',      date:'2026-11-29', sprint:false},
-  {id:24, name:'Abu Dhabi Grand Prix',      circuit:'Yas Marina Circuit',             loc:'Abu Dhabi',   date:'2026-12-06', sprint:false},
+  {id:6,  name:'Miami Grand Prix',          circuit:'Miami International Autodrome',  loc:'Miami',       date:'2026-05-03', sprint:true,  ergastRound:4 },
+  {id:7,  name:'Canadian Grand Prix',       circuit:'Circuit Gilles Villeneuve',      loc:'Montréal',    date:'2026-05-24', sprint:true,  ergastRound:5 },
+  {id:8,  name:'Monaco Grand Prix',         circuit:'Circuit de Monaco',              loc:'Monaco',      date:'2026-06-07', sprint:false, ergastRound:6 },
+  {id:9,  name:'Spanish Grand Prix',        circuit:'Circuit de Barcelona-Catalunya', loc:'Barcelona',   date:'2026-06-14', sprint:false, ergastRound:7 },
+  {id:10, name:'Austrian Grand Prix',       circuit:'Red Bull Ring',                  loc:'Spielberg',   date:'2026-06-28', sprint:false, ergastRound:8 },
+  {id:11, name:'British Grand Prix',        circuit:'Silverstone Circuit',            loc:'Silverstone', date:'2026-07-05', sprint:true,  ergastRound:9 },
+  {id:12, name:'Belgian Grand Prix',        circuit:'Circuit de Spa-Francorchamps',   loc:'Spa',         date:'2026-07-19', sprint:false, ergastRound:10},
+  {id:13, name:'Hungarian Grand Prix',      circuit:'Hungaroring',                    loc:'Budapest',    date:'2026-07-26', sprint:false, ergastRound:11},
+  {id:14, name:'Dutch Grand Prix',          circuit:'Circuit Zandvoort',              loc:'Zandvoort',   date:'2026-08-23', sprint:true,  ergastRound:12},
+  {id:15, name:'Italian Grand Prix',        circuit:'Autodromo Nazionale Monza',      loc:'Monza',       date:'2026-09-06', sprint:false, ergastRound:13},
+  {id:16, name:'Madrid Grand Prix',         circuit:'Circuit de Madrid',              loc:'Madrid',      date:'2026-09-13', sprint:false, ergastRound:14},
+  {id:17, name:'Azerbaijan Grand Prix',     circuit:'Baku City Circuit',              loc:'Baku',        date:'2026-09-26', sprint:false, ergastRound:15},
+  {id:18, name:'Singapore Grand Prix',      circuit:'Marina Bay Street Circuit',      loc:'Singapore',   date:'2026-10-11', sprint:true,  ergastRound:16},
+  {id:19, name:'United States Grand Prix',  circuit:'Circuit of the Americas',        loc:'Austin',      date:'2026-10-25', sprint:false, ergastRound:17},
+  {id:20, name:'Mexico City Grand Prix',    circuit:'Autódromo Hermanos Rodríguez',   loc:'Mexico City', date:'2026-11-01', sprint:false, ergastRound:18},
+  {id:21, name:'São Paulo Grand Prix',      circuit:'Autódromo José Carlos Pace',     loc:'São Paulo',   date:'2026-11-08', sprint:false, ergastRound:19},
+  {id:22, name:'Las Vegas Grand Prix',      circuit:'Las Vegas Strip Circuit',        loc:'Las Vegas',   date:'2026-11-21', sprint:false, ergastRound:20},
+  {id:23, name:'Qatar Grand Prix',          circuit:'Lusail International Circuit',   loc:'Lusail',      date:'2026-11-29', sprint:false, ergastRound:21},
+  {id:24, name:'Abu Dhabi Grand Prix',      circuit:'Yas Marina Circuit',             loc:'Abu Dhabi',   date:'2026-12-06', sprint:false, ergastRound:22},
 ];
 
 // ═══════════════════════════════════════════════════════════════════
@@ -3828,7 +3828,8 @@ function deleteResults(raceId) {
 
 async function fetchAndPopulateResults(raceId) {
   const race = raceById(raceId);
-  const BASE = `https://api.jolpi.ca/ergast/f1/${S.seasonYear ?? SEASON_YEAR}/${raceId}`;
+  const round = race.ergastRound ?? raceId;
+  const BASE = `https://api.jolpi.ca/ergast/f1/${S.seasonYear ?? SEASON_YEAR}/${round}`;
   const btn = document.getElementById('fetch-results-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⟳ Fetching…'; }
 
@@ -3915,7 +3916,8 @@ async function autoFetchAndSave(raceId, trigger) {
   _autoFetchInFlight.add(key);
 
   const race = raceById(raceId);
-  const BASE = `https://api.jolpi.ca/ergast/f1/${S.seasonYear ?? SEASON_YEAR}/${raceId}`;
+  const round = race.ergastRound ?? raceId;
+  const BASE = `https://api.jolpi.ca/ergast/f1/${S.seasonYear ?? SEASON_YEAR}/${round}`;
 
   let raceData, qualiData, sprintData;
   try {
