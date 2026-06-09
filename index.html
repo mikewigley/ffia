@@ -104,15 +104,15 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 .anim-label { width:110px; min-width:110px; font-size:13px; font-weight:600;
               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right;
               color:var(--text); }
-.anim-track-wrap { flex:1; padding-right:65px; overflow:visible; }
-.anim-track { height:30px; background:rgba(255,255,255,.06); border-radius:6px;
+.anim-track-wrap { flex:1; padding-right:42px; overflow:visible; }
+.anim-track { height:18px; background:rgba(255,255,255,.06); border-radius:6px;
               position:relative; overflow:visible; }
 .anim-fill  { height:100%; width:0; border-radius:6px; position:relative;
               background:var(--clr);
               animation: growBar 7s cubic-bezier(.15,.8,.3,1) forwards; }
 .anim-fill::after { content:''; position:absolute; inset:0; border-radius:6px;
                     background:linear-gradient(to right,rgba(0,0,0,.35),transparent); }
-.anim-car-wrap { position:absolute; right:-62px; top:50%; transform:translateY(-50%);
+.anim-car-wrap { position:absolute; right:-38px; top:50%; transform:translateY(-50%);
                  pointer-events:none; z-index:2; }
 .anim-pts { min-width:60px; font-size:13px; font-weight:700; text-align:left;
             opacity:0; animation: fadeInPts 1.5s ease forwards; }
@@ -1670,7 +1670,7 @@ function pColor(p) {
 }
 
 function carSvg(color) {
-  return `<svg viewBox="0 0 108 30" width="108" height="30" style="display:block">
+  return `<svg viewBox="0 0 108 30" width="65" height="18" style="display:block">
     <!-- Rear wing vertical fin -->
     <rect x="5" y="3" width="5" height="15" rx="1" fill="${color}"/>
     <!-- Rear wing horizontal blade -->
