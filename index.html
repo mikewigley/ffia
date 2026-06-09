@@ -816,6 +816,7 @@ function currentTab() {
 
 const driverById   = id   => DRIVERS.find(d => d.id === id);
 const driverByCode = code => DRIVERS.find(d => d.abbr === (code || '').toUpperCase()) || null;
+const driverByNum  = num  => DRIVERS.find(d => d.num === +num) || null;
 const raceById     = id   => RACES.find(r => r.id === id);
 const tc = team  => TEAM_COLORS[team] || '#666';
 const esc = s    => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -2412,6 +2413,9 @@ function renderPredictions(raceId) {
         ${!isCancelled && hasParticipants && effectiveLocked
           ? `<button class="btn btn-ghost btn-sm" onclick="openPredictionsModal(${_predRaceId})">👁 View Predictions</button>`
           : ''}
+        ${!isCancelled && hasParticipants
+          ? `<button class="btn btn-ghost btn-sm" onclick="exportPredictions(${_predRaceId})">📋 Export</button>`
+          : ''}
       </div>
     </div>
 
@@ -3067,14 +3071,15 @@ function buildResultsDisplay(raceId) {
           const did = res[sess.key]?.[pos];
           const d   = did ? driverById(did) : null;
           const medals = ['🥇','🥈','🥉','4th','5th'];
-          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:${i<sess.positions.length-1?'1px solid var(--border)':'none'}">
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:${i<sess.positions.length-1?'1px solid var(--border)':'none'};${d?'cursor:pointer;':''}" ${d?`onclick="showWhoPredicted(${raceId},'${sess.key}',${did})"`:''}>
             <span style="font-size:${i<3?'18px':'13px'};width:24px;text-align:center">${medals[i]}</span>
             ${d ? `
               <span class="dot" style="background:${tc(d.team)}"></span>
-              <div>
+              <div style="flex:1">
                 <div style="font-weight:700;font-size:13px">${esc(d.name)}</div>
                 <div style="font-size:11px;color:var(--muted)">${esc(d.team)}</div>
               </div>
+              <span style="font-size:10px;color:var(--muted)" title="Tap to see who predicted this">👥</span>
             ` : `<span style="color:var(--muted)">—</span>`}
           </div>`;
         }).join('')}
@@ -3865,7 +3870,7 @@ function deleteResults(raceId) {
 
 async function fetchAndPopulateResults(raceId) {
   const race = raceById(raceId);
-  const round = race.ergastRound ?? raceId;
+  const round = _ergastRoundMap[raceId] ?? race.ergastRound ?? raceId;
   const BASE = `https://api.jolpi.ca/ergast/f1/${S.seasonYear ?? SEASON_YEAR}/${round}`;
   const btn = document.getElementById('fetch-results-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⟳ Fetching…'; }
@@ -3928,6 +3933,18 @@ async function fetchAndPopulateResults(raceId) {
   // Sprint Race P1–P3
   if (race.sprint && sprintResults.length > 0)
     sprintResults.slice(0, 3).forEach((e, i) => setSelect(`res-sprint-p${i+1}`, e.Driver?.code));
+
+  // Sprint Qualifying P1–P3 via OpenF1 (no Ergast endpoint for this session)
+  if (race.sprint) {
+    const sqTop3 = await fetchSprintQualiFromOpenF1(raceId);
+    if (sqTop3 && sqTop3.length > 0) {
+      sqTop3.forEach((entry, i) => {
+        const d = driverByNum(entry.driver_number);
+        if (d) { const el = document.getElementById(`res-sprintquali-p${i+1}`); if (el) el.value = String(d.id); }
+        else unknownCodes.push(`#${entry.driver_number}`);
+      });
+    }
+  }
 
   if (btn) { btn.disabled = false; btn.textContent = '🔄 Fetch Results'; }
 
@@ -4673,10 +4690,146 @@ const TABS = ['dashboard','predictions','results','calendar','participants','set
 // INIT
 // ═══════════════════════════════════════════════════════════════════
 
+// ── AUTO-DETECT CANCELLED RACES ────────────────────────────────────
+let _ergastRoundMap = {};
+
+async function fetchSeasonSchedule() {
+  try {
+    const res = await fetch(`https://api.jolpi.ca/ergast/f1/${S.seasonYear ?? SEASON_YEAR}.json`);
+    const data = await res.json();
+    const apiRaces = data?.MRData?.RaceTable?.Races || [];
+    if (apiRaces.length === 0) return;
+    const dateToRound = {};
+    apiRaces.forEach(r => { dateToRound[r.date] = +r.round; });
+    _ergastRoundMap = {};
+    let cancelChanged = false;
+    if (!S.cancelled) S.cancelled = {};
+    RACES.forEach(race => {
+      const apiRound = dateToRound[race.date];
+      if (apiRound) {
+        _ergastRoundMap[race.id] = apiRound;
+      } else if (!S.cancelled[race.id]) {
+        S.cancelled[race.id] = true;
+        cancelChanged = true;
+      }
+    });
+    if (cancelChanged) {
+      save(); reRenderActive();
+      const n = RACES.filter(r => !dateToRound[r.date]).length;
+      toast(`${n} cancelled race${n > 1 ? 's' : ''} auto-detected from API`);
+    }
+  } catch(e) { console.warn('Season schedule fetch failed:', e); }
+}
+
+// ── SPRINT QUALIFYING FETCH (OpenF1) ───────────────────────────────
+async function fetchSprintQualiFromOpenF1(raceId) {
+  const race = raceById(raceId);
+  try {
+    const res = await fetch(`https://api.openf1.org/v1/sessions?year=${S.seasonYear ?? SEASON_YEAR}&session_name=Sprint%20Qualifying`);
+    const sessions = await res.json();
+    if (!Array.isArray(sessions) || sessions.length === 0) return null;
+    const raceDate = new Date(race.date);
+    const sess = sessions.find(s => {
+      const diff = (raceDate - new Date(s.date_start)) / 86400000;
+      return diff >= 0 && diff <= 4;
+    });
+    if (!sess) return null;
+    const posRes = await fetch(`https://api.openf1.org/v1/position?session_key=${sess.session_key}`);
+    const positions = await posRes.json();
+    if (!Array.isArray(positions) || positions.length === 0) return null;
+    const latest = {};
+    positions.forEach(p => {
+      if (!latest[p.driver_number] || p.date > latest[p.driver_number].date) latest[p.driver_number] = p;
+    });
+    return Object.values(latest).sort((a, b) => a.position - b.position).slice(0, 3);
+  } catch { return null; }
+}
+
+// ── PREDICTIONS EXPORT ─────────────────────────────────────────────
+function exportPredictions(raceId) {
+  const race = raceById(raceId);
+  const sessions = race.sprint ? [
+    { key: 'sprintquali', label: 'SQ',     positions: PODIUM_POS },
+    { key: 'sprint',      label: 'Sprint', positions: PODIUM_POS },
+    { key: 'quali',       label: 'Quali',  positions: PODIUM_POS },
+    { key: 'race',        label: 'Race',   positions: RACE_POS   },
+  ] : [
+    { key: 'quali', label: 'Quali', positions: PODIUM_POS },
+    { key: 'race',  label: 'Race',  positions: RACE_POS   },
+  ];
+  const lines = [`🏁 FFIA Predictions — R${raceId}: ${race.name}`, `📅 ${fmtDate(race.date)}`, ''];
+  S.participants.forEach(p => {
+    const pred = S.predictions[raceId]?.[p.id];
+    if (!pred) { lines.push(`👤 ${p.name}  (no predictions)`); lines.push(''); return; }
+    lines.push(`👤 ${p.name}`);
+    sessions.forEach(({ key, label, positions }) => {
+      const abbrs = positions.map(pos => driverById(pred[key]?.[pos])?.abbr || '—').join(' · ');
+      lines.push(`  ${label}: ${abbrs}`);
+    });
+    const pb = pred.bonus || {};
+    const bonusParts = [];
+    const fl = driverById(pb.fastestLap); if (fl) bonusParts.push(`FL: ${fl.abbr}`);
+    if (pb.driverPlace != null) bonusParts.push(`${driverById(S.bonusDriverId)?.abbr || 'Drv'}: P${pb.driverPlace}`);
+    const dotd = driverById(pb.dotd); if (dotd) bonusParts.push(`DOTD: ${dotd.abbr}`);
+    if (bonusParts.length) lines.push(`  ${bonusParts.join(' · ')}`);
+    lines.push('');
+  });
+  const text = lines.join('\n');
+  if (navigator.share) {
+    navigator.share({ title: `FFIA Predictions — R${raceId}`, text });
+  } else {
+    navigator.clipboard?.writeText(text).then(() => toast('Predictions copied to clipboard ✓'))
+      .catch(() => toast('Copy failed — try a different browser', 'err'));
+  }
+}
+
+// ── WHO PREDICTED THIS ─────────────────────────────────────────────
+function showWhoPredicted(raceId, sessionKey, driverId) {
+  const race = raceById(raceId);
+  const driver = driverById(driverId);
+  const positions = sessionKey === 'race' ? RACE_POS : PODIUM_POS;
+  const matches = [];
+  S.participants.forEach(p => {
+    const pred = S.predictions[raceId]?.[p.id]?.[sessionKey];
+    if (!pred) return;
+    positions.forEach(pos => {
+      if (pred[pos] === driverId) matches.push({ name: p.name, pos: POS_LABEL[pos], color: pColor(p) });
+    });
+  });
+  const sessionLabels = { race: 'Race', quali: 'Qualifying', sprint: 'Sprint', sprintquali: 'Sprint Quali' };
+  openModal(`
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-title">Who predicted ${esc(driver?.name || '')}?</div>
+        <div class="modal-title-sub">${sessionLabels[sessionKey] || sessionKey} — ${esc(race.name)}</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      ${matches.length === 0
+        ? `<div class="empty"><span class="empty-icon">🤷</span><div class="empty-title">Nobody predicted this</div></div>`
+        : matches.map(m => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+            <span style="display:flex;align-items:center;gap:8px">
+              <span class="dot" style="background:${m.color}"></span>
+              <span style="font-weight:700">${esc(m.name)}</span>
+            </span>
+            <span class="badge badge-next">${m.pos}</span>
+          </div>`).join('')}
+    </div>
+    <div class="modal-foot"><div></div><div class="modal-foot-right">
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+    </div></div>
+  `);
+}
+
+
+
 renderDashboard();
 document.title = 'FFIA Fantasy League ' + (S.seasonYear ?? SEASON_YEAR);
 startCountdownTimers();
 scheduleDeadlineNotifications();
+fetchSeasonSchedule();
 setTimeout(() => {
   updateIdentityUI();
   if (S.participants.length > 0 && !getIdentity()) showIdentityPicker();
