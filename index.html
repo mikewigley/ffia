@@ -105,13 +105,12 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right;
               color:var(--text); }
 .anim-track-wrap { flex:1; padding-right:42px; overflow:visible; }
-.anim-track { height:18px; background:rgba(255,255,255,.06); border-radius:6px;
+.anim-track { height:10px; background:rgba(255,255,255,.06); border-radius:6px;
               position:relative; overflow:visible; }
 .anim-fill  { height:100%; width:0; border-radius:6px; position:relative;
-              background:var(--clr);
               animation: growBar 7s cubic-bezier(.15,.8,.3,1) forwards; }
-.anim-fill::after { content:''; position:absolute; inset:0; border-radius:6px;
-                    background:linear-gradient(to right,rgba(0,0,0,.35),transparent); }
+.anim-fill::before { content:''; position:absolute; inset:0; border-radius:6px;
+                     background:var(--clr); opacity:0.3; }
 .anim-car-wrap { position:absolute; right:-38px; top:50%; transform:translateY(-50%);
                  pointer-events:none; z-index:2; }
 .anim-pts { min-width:60px; font-size:13px; font-weight:700; text-align:left;
@@ -325,8 +324,7 @@ body.light #undo-snackbar { background: #fff; color: #111; }
   .scoring-grid { grid-template-columns: 1fr; }
   .anim-label { width: 100%; min-width: 0; font-size: 12px; text-align: left; margin-bottom: 2px; }
   .anim-row { flex-wrap: wrap; row-gap: 0; column-gap: 6px; }
-  .anim-track-wrap { flex: 1; padding-right: 0; }
-  .anim-car-wrap { display: none; }
+  .anim-track-wrap { flex: 1; padding-right: 42px; }
   .anim-pts { min-width: 36px; font-size: 11px; }
 }
 
@@ -1711,9 +1709,9 @@ function renderBarChart(mode, lb) {
     ${data.map((p, i) => {
       const color   = pColor(p);
       const pct     = (Math.max(0, p.pts) / maxAbs * 100).toFixed(1);
-      const dur       = mode === 'season' ? '14s' : '7s';
-      const delay     = mode === 'season' ? (i * 1.0).toFixed(2) : (i * 0.65).toFixed(2);
-      const ptsDelay  = mode === 'season' ? (i * 1.0 + 13).toFixed(2) : (i * 0.65 + 6).toFixed(2);
+      const dur       = mode === 'season' ? '22s' : '7s';
+      const delay     = mode === 'season' ? (i * 1.4).toFixed(2) : (i * 0.65).toFixed(2);
+      const ptsDelay  = mode === 'season' ? (i * 1.4 + 21).toFixed(2) : (i * 0.65 + 6).toFixed(2);
       const ptsColor = p.pts < 0 ? '#ff7070' : p.pts === 0 ? 'var(--muted)' : color;
       return `
         <div class="anim-row" data-pid="${p.id}">
@@ -1737,8 +1735,7 @@ function replayAnims(mode) {
     el.offsetHeight; // force reflow
     el.style.animation = '';
   });
-  if (mode === 'season') startSeasonOvertakeWatcher(window._replayLb);
-}
+  if (mode === 'season') startSeasonOvertakeWatcher(window._replayLb);}
 
 function renderAnimations(lb) {
   const completedRaceIds = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).map(r => r.id);
@@ -1764,10 +1761,11 @@ function renderAnimations(lb) {
     </div>
 
     <div class="card">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
         <div class="card-title" style="margin:0;flex:1">Season Total</div>
         <button class="btn btn-ghost btn-sm" onclick="replayAnims('season')">↺ Replay</button>
       </div>
+      <div id="season-race-counter" style="text-align:center;padding:6px 0 14px;min-height:32px"></div>
       ${renderBarChart('season', lb)}
     </div>
   `;
@@ -2023,12 +2021,30 @@ function renderLiveRaceStandings() {
 
 let _seasonOvertakeRAF = null;
 let _seasonOvertakePrev = {};
+let _seasonCounterTimer = null;
+
+function startSeasonRaceCounter() {
+  if (_seasonCounterTimer) clearInterval(_seasonCounterTimer);
+  const el = document.getElementById('season-race-counter');
+  if (!el) return;
+  const ids = RACES.filter(r => S.results[r.id] && !S.cancelled?.[r.id]).map(r => r.id);
+  if (ids.length === 0) return;
+  el.innerHTML = '';
+  let idx = 0;
+  const intervalMs = 22000 / ids.length;
+  _seasonCounterTimer = setInterval(() => {
+    if (idx >= ids.length) { clearInterval(_seasonCounterTimer); return; }
+    const race = raceById(ids[idx++]);
+    el.innerHTML = `<span style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px">Round</span>&nbsp;<span style="font-weight:800;font-size:18px">${race.id}</span>&nbsp;<span style="color:var(--muted2);font-size:12px;font-weight:600">${esc(race.loc)}</span>`;
+  }, intervalMs);
+}
 
 function startSeasonOvertakeWatcher(lb) {
   if (!lb || lb.length === 0) return;
   if (_seasonOvertakeRAF) cancelAnimationFrame(_seasonOvertakeRAF);
   _seasonOvertakePrev = {};
-  const maxMs = lb.length * 1000 + 15000;
+  const maxMs = lb.length * 1400 + 23000;
+  startSeasonRaceCounter();
   const t0 = performance.now();
   function tick() {
     const chart = document.getElementById('anim-chart-season');
