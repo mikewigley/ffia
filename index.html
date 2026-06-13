@@ -4388,61 +4388,67 @@ function saveSettings() {
   const name = document.getElementById('s-name').value.trim();
   if (!name) { toast('League name cannot be empty', 'err'); return; }
 
-  S.leagueName = name;
+  // Read the PIN field first so we can check against the *current* saved PIN
+  const enteredPin = document.getElementById('s-admin-pin')?.value.trim() ?? '';
 
-  const yearEl = document.getElementById('s-season-year');
-  if (yearEl && !S.seasonYearLocked) S.seasonYear = Math.max(2020, Math.min(2099, +yearEl.value || SEASON_YEAR));
+  const doSave = () => {
+    S.leagueName = name;
 
-  const readScore = (session, positions) => {
-    positions.forEach(pos => {
-      const el = document.getElementById(`sc-${session}-${pos}`);
-      if (el) S.scoring[session][pos] = Math.max(0, +el.value || 0);
+    const yearEl = document.getElementById('s-season-year');
+    if (yearEl && !S.seasonYearLocked) S.seasonYear = Math.max(2020, Math.min(2099, +yearEl.value || SEASON_YEAR));
+
+    const readScore = (session, positions) => {
+      positions.forEach(pos => {
+        const el = document.getElementById(`sc-${session}-${pos}`);
+        if (el) S.scoring[session][pos] = Math.max(0, +el.value || 0);
+      });
+    };
+    readScore('race',        RACE_POS);
+    readScore('quali',       PODIUM_POS);
+    readScore('sprint',      PODIUM_POS);
+    readScore('sprintquali', PODIUM_POS);
+
+    // Top-N bonus inputs
+    ['race', 'sprint'].forEach(key => {
+      const el = document.getElementById(`sc-${key}-topN`);
+      if (el) S.scoring[key].topN = Math.max(0, +el.value || 0);
     });
+    const top2El = document.getElementById('sc-race-top2');
+    if (top2El) S.scoring.race.top2 = Math.max(0, +top2El.value || 0);
+
+    // Bonus driver + scoring
+    const bd = document.getElementById('s-bonus-driver');
+    if (bd?.value) S.bonusDriverId = +bd.value;
+    if (!S.scoring.bonus) S.scoring.bonus = {};
+    ['fastestLap','driverPlace','dotd'].forEach(k => {
+      const el = document.getElementById(`sc-bonus-${k}`);
+      if (el) S.scoring.bonus[k] = Math.max(0, +el.value || 0);
+    });
+
+    // Clippy
+    const clippyWasOff = !S.clippyEnabled;
+    S.clippyEnabled = document.getElementById('s-clippy-enabled')?.checked ?? true;
+    S.clippyPhrase  = document.getElementById('s-clippy-phrase')?.value.trim() ?? '';
+    if (S.clippyEnabled && clippyWasOff) _clippyDismissed = false;
+
+    // Admin PIN
+    S.adminPin = enteredPin;
+
+    // Lock mins before quali
+    const lmEl = document.getElementById('s-lock-mins');
+    if (lmEl && !S.lockMinsLocked) S.lockMinsBefore = Math.max(0, +lmEl.value || 0);
+
+    // Auto-fetch
+    const afEl = document.getElementById('s-auto-fetch');
+    if (afEl) S.autoFetchResults = afEl.checked;
+
+    save();
+    { const _hn = document.getElementById('hdr-name'); if (_hn) _hn.textContent = S.leagueName; }
+    document.title = 'FFIA Fantasy League ' + (S.seasonYear ?? SEASON_YEAR);
+    toast('Settings saved');
   };
-  readScore('race',        RACE_POS);
-  readScore('quali',       PODIUM_POS);
-  readScore('sprint',      PODIUM_POS);
-  readScore('sprintquali', PODIUM_POS);
 
-  // Top-N bonus inputs
-  ['race', 'sprint'].forEach(key => {
-    const el = document.getElementById(`sc-${key}-topN`);
-    if (el) S.scoring[key].topN = Math.max(0, +el.value || 0);
-  });
-  const top2El = document.getElementById('sc-race-top2');
-  if (top2El) S.scoring.race.top2 = Math.max(0, +top2El.value || 0);
-
-  // Bonus driver + scoring
-  const bd = document.getElementById('s-bonus-driver');
-  if (bd?.value) S.bonusDriverId = +bd.value;
-  if (!S.scoring.bonus) S.scoring.bonus = {};
-  ['fastestLap','driverPlace','dotd'].forEach(k => {
-    const el = document.getElementById(`sc-bonus-${k}`);
-    if (el) S.scoring.bonus[k] = Math.max(0, +el.value || 0);
-  });
-
-  // Clippy
-  const clippyWasOff = !S.clippyEnabled;
-  S.clippyEnabled = document.getElementById('s-clippy-enabled')?.checked ?? true;
-  S.clippyPhrase  = document.getElementById('s-clippy-phrase')?.value.trim() ?? '';
-  if (S.clippyEnabled && clippyWasOff) _clippyDismissed = false;
-
-  // Admin PIN
-  const pinEl = document.getElementById('s-admin-pin');
-  if (pinEl) S.adminPin = pinEl.value.trim();
-
-  // Lock mins before quali
-  const lmEl = document.getElementById('s-lock-mins');
-  if (lmEl && !S.lockMinsLocked) S.lockMinsBefore = Math.max(0, +lmEl.value || 0);
-
-  // Auto-fetch
-  const afEl = document.getElementById('s-auto-fetch');
-  if (afEl) S.autoFetchResults = afEl.checked;
-
-  save();
-  { const _hn = document.getElementById('hdr-name'); if (_hn) _hn.textContent = S.leagueName; }
-  document.title = 'FFIA Fantasy League ' + (S.seasonYear ?? SEASON_YEAR);
-  toast('Settings saved');
+  if (S.adminPin) { requirePin(doSave); } else { doSave(); }
 }
 
 function exportData() {
