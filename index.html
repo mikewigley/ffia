@@ -735,6 +735,9 @@ function save() {
 let _db = null;
 let _lastSaveMs = 0;
 let _fbSynced = false; // true once Firebase has confirmed its state — prevents auto-saves clobbering real data on a fresh browser
+let _backupDoneThisSession = false;
+const BACKUP_PATH = FIREBASE_PATH + '_backups';
+const BACKUP_KEEP_DAYS = 7;
 
 function fbConfigured() {
   return typeof FIREBASE_CONFIG !== 'undefined' &&
@@ -790,6 +793,7 @@ function initFirebase() {
         updateIdentityUI();
       }
       syncStatus('synced');
+      fbBackup();
     }, () => syncStatus('error'));
   } catch(e) {
     console.warn('Firebase init failed:', e);
@@ -804,6 +808,24 @@ function fbSave() {
   _db.ref(FIREBASE_PATH).set(JSON.parse(JSON.stringify(S)))
     .then(() => syncStatus('synced'))
     .catch(() => { syncStatus('error'); toast('Cloud sync failed — saved locally', 'err'); });
+}
+
+function fbBackup() {
+  if (!_db || !_fbSynced || _backupDoneThisSession || S.participants.length === 0) return;
+  _backupDoneThisSession = true;
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const backupRef = _db.ref(`${BACKUP_PATH}/${today}`);
+  backupRef.once('value').then(snap => {
+    if (snap.val()) return; // today's backup already exists
+    backupRef.set(JSON.parse(JSON.stringify(S))).then(() => {
+      // Prune old backups — keep only the last BACKUP_KEEP_DAYS
+      _db.ref(BACKUP_PATH).once('value').then(allSnap => {
+        const keys = Object.keys(allSnap.val() || {}).sort();
+        const toDelete = keys.slice(0, Math.max(0, keys.length - BACKUP_KEEP_DAYS));
+        toDelete.forEach(key => _db.ref(`${BACKUP_PATH}/${key}`).remove());
+      });
+    }).catch(e => console.warn('Backup write failed:', e));
+  }).catch(e => console.warn('Backup check failed:', e));
 }
 
 function currentTab() {
