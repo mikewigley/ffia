@@ -734,6 +734,7 @@ function save() {
 // ── FIREBASE ────────────────────────────────────────────────────────
 let _db = null;
 let _lastSaveMs = 0;
+let _fbSynced = false; // true once Firebase has confirmed its state — prevents auto-saves clobbering real data on a fresh browser
 
 function fbConfigured() {
   return typeof FIREBASE_CONFIG !== 'undefined' &&
@@ -774,6 +775,7 @@ function initFirebase() {
     syncStatus('connecting');
 
     _db.ref(FIREBASE_PATH).on('value', snap => {
+      _fbSynced = true; // Firebase has now told us what it holds — safe to push
       const remote = snap.val();
       // Skip echo of our own save
       if (Date.now() - _lastSaveMs < 3000) { syncStatus('synced'); return; }
@@ -796,7 +798,7 @@ function initFirebase() {
 }
 
 function fbSave() {
-  if (!_db) return;
+  if (!_db || !_fbSynced) return;
   _lastSaveMs = Date.now();
   syncStatus('saving');
   _db.ref(FIREBASE_PATH).set(JSON.parse(JSON.stringify(S)))
@@ -4425,7 +4427,7 @@ function exportData() {
   const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href = url; a.download = 'f1-fantasy-2025.json'; a.click();
+  a.href = url; a.download = `f1-fantasy-${SEASON_YEAR}.json`; a.click();
   URL.revokeObjectURL(url);
   toast('Data exported');
 }
@@ -4433,6 +4435,10 @@ function exportData() {
 function importData(input) {
   const file = input.files[0];
   if (!file) return;
+  if (!confirm(`Import "${file.name}"? This will overwrite all current data.`)) {
+    input.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = e => {
     try {
@@ -4448,12 +4454,15 @@ function importData(input) {
 }
 
 function resetAll() {
-  if (!confirm('Reset ALL data? Participants, predictions, and results will be permanently deleted.')) return;
-  S = Object.assign({}, DEFAULTS, { participants:[], predictions:{}, results:{}, locked:{}, lockedP:{} });
-  save();
-  { const _hn = document.getElementById('hdr-name'); if (_hn) _hn.textContent = S.leagueName; }
-  switchTab('dashboard');
-  toast('All data reset');
+  const doReset = () => {
+    if (!confirm('Reset ALL data? Participants, predictions, and results will be permanently deleted.')) return;
+    S = Object.assign({}, DEFAULTS, { participants:[], predictions:{}, results:{}, locked:{}, lockedP:{} });
+    save();
+    { const _hn = document.getElementById('hdr-name'); if (_hn) _hn.textContent = S.leagueName; }
+    switchTab('dashboard');
+    toast('All data reset');
+  };
+  if (S.adminPin) { requirePin(doReset); } else { doReset(); }
 }
 
 // ═══════════════════════════════════════════════════════════════════
