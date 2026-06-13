@@ -4153,6 +4153,13 @@ function _checkPin() {
   }
 }
 
+// Emergency PIN reset — type clearAdminPin() in the browser console if the PIN is forgotten
+function clearAdminPin() {
+  S.adminPin = '';
+  save();
+  console.log('Admin PIN cleared. You can set a new one in Settings.');
+}
+
 function toggleParticipantLock(raceId, pid) {
   if (!S.lockedP) S.lockedP = {};
   if (!S.lockedP[raceId]) S.lockedP[raceId] = {};
